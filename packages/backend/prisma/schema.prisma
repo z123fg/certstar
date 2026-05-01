@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cert {
+  id              String   @id @default(cuid())
+  idNum           String   @unique
+  certNum         String   @unique
+  name            String
+  organization    String
+  issuingAgency   String
+  expDate         DateTime
+  certType        String
+  certImageUrl    String?
+  profileImageUrl String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // canvas layout — nullable so a cert can be saved before the canvas is finalized
+  nameLeft        Float?
+  nameTop         Float?
+  nameScaleX      Float?
+  nameScaleY      Float?
+  nameAngle       Float?
+  nameOriginX     String?
+
+  idNumLeft       Float?
+  idNumTop        Float?
+  idNumScaleX     Float?
+  idNumScaleY     Float?
+  idNumAngle      Float?
+  idNumOriginX    String?
+
+  organizationLeft     Float?
+  organizationTop      Float?
+  organizationScaleX   Float?
+  organizationScaleY   Float?
+  organizationAngle    Float?
+  organizationOriginX  String?
+
+  certNumLeft     Float?
+  certNumTop      Float?
+  certNumScaleX   Float?
+  certNumScaleY   Float?
+  certNumAngle    Float?
+  certNumOriginX  String?
+
+  expDateLeft     Float?
+  expDateTop      Float?
+  expDateScaleX   Float?
+  expDateScaleY   Float?
+  expDateAngle    Float?
+  expDateOriginX  String?
+
+  profileLeft     Float?
+  profileTop      Float?
+  profileScaleX   Float?
+  profileScaleY   Float?
+  profileAngle    Float?
+}

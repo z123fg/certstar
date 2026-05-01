@@ -1,0 +1,26 @@
+const intl = {
+  name: "姓名",
+  idNum: "身份证号",
+  organization: "工作单位",
+  certNum: "证书编号",
+  expDate: "有效期至",
+  issuingAgency: "发证机构",
+  certType: "证书类型",
+  profileImage: "证件照",
+  login: "登录",
+  logout: "登出",
+  submit: "提交",
+  cancel: "取消",
+  delete: "删除",
+  download: "下载为图片",
+  addOne: "添加单个证书",
+  addMany: "批量添加证书",
+  noData: "暂无证书数据",
+  uploadCsv: "上传 .csv 文件",
+  uploadImages: "上传证件照（多个）",
+  submitAll: "上传全部数据",
+  downloadZip: "下载为 zip",
+  search: "搜索",
+} as const;
+
+export default intl;
