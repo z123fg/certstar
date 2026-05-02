@@ -3,5 +3,18 @@
   "private": true,
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "backend:dev": "npm run dev -w @certstar/backend",
+    "backend:build": "npm run build -w @certstar/backend",
+    "backend:start": "npm run start -w @certstar/backend",
+    "backend:db:migrate": "npm run db:migrate -w @certstar/backend",
+    "backend:db:generate": "npm run db:generate -w @certstar/backend",
+    "admin:dev": "npm run dev -w admin",
+    "admin:build": "npm run build -w admin",
+    "admin:preview": "npm run preview -w admin",
+    "admin:lint": "npm run lint -w admin",
+    "admin:typecheck": "npm run typecheck -w admin",
+    "clean": "find . -name 'node_modules' -type d -not -path '*/.git/*' -prune -exec rm -rf {} + && find . -name 'package-lock.json' -not -path '*/.git/*' -delete"
+  }
 }
