@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { Box, Button, Divider, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import SaveIcon from "@mui/icons-material/Save";
+import { parseExpDate } from "@certstar/shared";
+import type { CertVariant } from "../../utils/canvasUtils";
 import { useAppContext } from "../../App";
 import CertForm from "./CertForm";
 import CertCanvas from "./CertCanvas";
@@ -12,7 +14,8 @@ import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import type { Cert } from "../../types";
 import { createOne, deleteOne, getOne, updateOne } from "../../services/cert";
 import { getProxiedImageDataUrl, getUploadUrl } from "../../services/sts";
-import { downloadCanvasAsImage, exportCanvasAsDataUrl, getSnapshotLayout } from "../../utils/canvasUtils";
+import { exportCanvasAsDataUrl, getSnapshotLayout, renderCertToBlob, triggerBlobDownload } from "../../utils/canvasUtils";
+import { isCertDraftValid } from "../../utils/certValidation";
 
 export default function CertEditorPage() {
   const { id } = useParams();
@@ -21,8 +24,11 @@ export default function CertEditorPage() {
 
   const isNew = !id;
   const [formData, setFormData] = useState<Partial<Cert>>({ certType: "WTOP" });
+
+  const isFormValid = isCertDraftValid(formData);
   const [profileImageDataUrl, setProfileImageDataUrl] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -39,17 +45,9 @@ export default function CertEditorPage() {
     })();
   }, [id]);
 
-  const validate = () => {
-    if (!formData.idNum || !formData.certNum) {
-      setAlert({ type: "error", message: "身份证号和证书编号不能为空" });
-      return false;
-    }
-    return true;
-  };
-
-  const uploadCertImage = async (certId: string): Promise<string> => {
+  const uploadCertImage = async (): Promise<string> => {
     const blob = await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
-    const filename = `cert-image/${certId}.png`;
+    const filename = `cert-image/${formData.certNum}.png`;
     const uploadUrl = await getUploadUrl(filename, "image/png");
     await fetch(uploadUrl, { method: "PUT", body: blob, headers: { "Content-Type": "image/png" } });
     return filename;
@@ -65,17 +63,16 @@ export default function CertEditorPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validate()) return;
     showBackdrop(true);
     try {
-      const tempId = formData.id ?? formData.idNum!;
-      const certImageUrl = await uploadCertImage(tempId);
-      const profileImageUrl = await uploadProfileImage(tempId);
+      const certImageUrl = await uploadCertImage();
+      const profileImageUrl = await uploadProfileImage(formData.idNum!);
       const payload = {
         ...formData,
         ...getSnapshotLayout(),
         certImageUrl,
         ...(profileImageUrl ? { profileImageUrl } : {}),
+        ...(formData.expDate ? { expDate: parseExpDate(formData.expDate)! } : {}),
       } as Omit<Cert, "id" | "createdAt" | "updatedAt">;
 
       if (isNew) {
@@ -88,6 +85,19 @@ export default function CertEditorPage() {
       navigate("/");
     } catch {
       setAlert({ type: "error", message: "保存失败，请重试" });
+    } finally {
+      showBackdrop(false);
+    }
+  };
+
+  const handleDownload = async (variant: CertVariant) => {
+    setDownloadAnchor(null);
+    showBackdrop(true);
+    try {
+      const blob = await renderCertToBlob(formData, profileImageDataUrl, variant);
+      triggerBlobDownload(blob, `${formData.name}_${formData.certNum ?? "certificate"}.png`);
+    } catch {
+      setAlert({ type: "error", message: "下载失败，请重试" });
     } finally {
       showBackdrop(false);
     }
@@ -111,6 +121,10 @@ export default function CertEditorPage() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Hidden canvas used by renderCertToBlob for download */}
+      <div aria-hidden="true" style={{ position: "fixed", left: "-99999px", top: "-99999px", overflow: "hidden" }}>
+        <canvas id="download-canvas" />
+      </div>
       <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} size="small">返回</Button>
         <Typography variant="h6">{isNew ? "添加证书" : "编辑证书"}</Typography>
@@ -126,10 +140,14 @@ export default function CertEditorPage() {
           />
           <Divider sx={{ my: 2 }} />
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSubmit}>提交</Button>
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void downloadCanvasAsImage(`${formData.certNum ?? "certificate"}.png`)}>
+            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSubmit} disabled={!isFormValid}>提交</Button>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={(e) => setDownloadAnchor(e.currentTarget)}>
               下载
             </Button>
+            <Menu anchorEl={downloadAnchor} open={Boolean(downloadAnchor)} onClose={() => setDownloadAnchor(null)}>
+              <MenuItem onClick={() => handleDownload("stamped")}>带章版</MenuItem>
+              <MenuItem onClick={() => handleDownload("stampless")}>无章版</MenuItem>
+            </Menu>
             {!isNew && (
               <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)}>
                 删除

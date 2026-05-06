@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Alert, Backdrop, CircularProgress, Snackbar } from "@mui/material";
 import Header from "./components/Header/Header";
 import CertListPage from "./pages/CertListPage";
 import CertEditorPage from "./pages/CertEditor/CertEditorPage";
+import { BatchProvider } from "./pages/Batch/BatchContext";
+import BatchUploadPage from "./pages/Batch/BatchUploadPage";
+import BatchPreviewPage from "./pages/Batch/BatchPreviewPage";
+import BatchDraftEditorPage from "./pages/Batch/BatchDraftEditorPage";
 import { getAll } from "./services/cert";
 import type { Cert } from "./types";
 
@@ -58,6 +62,12 @@ export default function App() {
         <Route path="/" element={<CertListPage token={token} />} />
         <Route path="/certs/new" element={<CertEditorPage />} />
         <Route path="/certs/:id/edit" element={<CertEditorPage />} />
+        <Route element={<BatchProvider />}>
+          <Route path="/batch" element={<Navigate to="/batch/upload" replace />} />
+          <Route path="/batch/upload" element={<BatchUploadPage token={token} />} />
+          <Route path="/batch/preview" element={<BatchPreviewPage token={token} />} />
+          <Route path="/batch/draft/:index/edit" element={<BatchDraftEditorPage />} />
+        </Route>
       </Routes>
       <Snackbar
         open={!!alert}

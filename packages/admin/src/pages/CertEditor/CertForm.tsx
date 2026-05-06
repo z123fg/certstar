@@ -1,8 +1,9 @@
+import { useState } from "react";
 import {
   Box, Button, FormControl, InputLabel, MenuItem,
   Select, Stack, TextField, Typography,
 } from "@mui/material";
-import { certTypeMap } from "@certstar/shared";
+import { certTypeMap, parseExpDate, toChineseDateString } from "@certstar/shared";
 import type { Cert } from "../../types";
 import intl from "../../intl/intl";
 
@@ -18,13 +19,29 @@ const TEXT_FIELDS: { key: keyof Cert; required?: boolean }[] = [
   { key: "idNum", required: true },
   { key: "organization" },
   { key: "certNum", required: true },
-  { key: "expDate" },
+  { key: "expDate", required: true },
   { key: "issuingAgency" },
 ];
 
+
 export default function CertForm({ data, profileImageDataUrl, onChange, onProfileImageChange }: Props) {
+  const [touched, setTouched] = useState<Set<keyof Cert>>(new Set());
+
   const handleChange = (field: keyof Cert, value: string) => {
     onChange({ ...data, [field]: value });
+  };
+
+  const handleBlur = (field: keyof Cert) => {
+    setTouched((prev) => new Set([...prev, field]));
+  };
+
+  const getFieldError = (key: keyof Cert): string | undefined => {
+    const val = String(data[key] ?? "").trim();
+    if ((key === "idNum" || key === "certNum" || key === "expDate") && touched.has(key) && !val)
+      return `${intl[key as keyof typeof intl]}不能为空`;
+    if (key === "expDate" && val && !parseExpDate(data[key]))
+      return "格式不正确，支持 yyyy-mm-dd 或 yyyy/mm/dd";
+    return undefined;
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,17 +67,23 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
         </Select>
       </FormControl>
 
-      {TEXT_FIELDS.map(({ key, required }) => (
-        <TextField
-          key={key}
-          size="small"
-          fullWidth
-          label={intl[key as keyof typeof intl]}
-          required={required}
-          value={String(data[key] ?? "")}
-          onChange={(e) => handleChange(key, e.target.value)}
-        />
-      ))}
+      {TEXT_FIELDS.map(({ key, required }) => {
+        const error = getFieldError(key);
+        return (
+          <TextField
+            key={key}
+            size="small"
+            fullWidth
+            label={intl[key as keyof typeof intl]}
+            required={required}
+            value={key === "expDate" ? toChineseDateString(data[key]) : String(data[key] ?? "")}
+            error={Boolean(error)}
+            helperText={error ?? (key === "expDate" ? intl.expDateHint : undefined)}
+            onChange={(e) => handleChange(key, e.target.value)}
+            onBlur={() => handleBlur(key)}
+          />
+        );
+      })}
 
       <Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{intl.profileImage}</Typography>

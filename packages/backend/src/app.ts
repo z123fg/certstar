@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
+import pinoHttp from "pino-http";
+import logger from "./logger";
 import authRoutes from "./routes/auth";
 import certRoutes from "./routes/cert";
 import stsRoutes from "./routes/sts";
 
 const app = express();
 
+app.use(pinoHttp({ logger }));
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN }));
 app.use(express.json({ limit: "20mb" }));
 

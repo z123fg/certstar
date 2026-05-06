@@ -29,3 +29,7 @@ export const updateOne = async (id: string, cert: Partial<Cert>): Promise<Cert> 
 export const deleteOne = async (id: string): Promise<void> => {
   await api.delete(`/certs/${id}`);
 };
+
+export const deleteMany = async (ids: string[]): Promise<void> => {
+  await api.delete("/certs/batch", { data: { ids } });
+};

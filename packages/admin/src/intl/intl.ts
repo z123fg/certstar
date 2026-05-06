@@ -4,6 +4,7 @@ const intl = {
   organization: "工作单位",
   certNum: "证书编号",
   expDate: "有效期至",
+  expDateHint: "格式示例：2026-12-30",
   issuingAgency: "发证机构",
   certType: "证书类型",
   profileImage: "证件照",
