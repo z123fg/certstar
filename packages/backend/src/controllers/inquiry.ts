@@ -21,8 +21,9 @@ export const searchByIdNum = async (req: Request, res: Response) => {
             .filter((c) => isTodayOrLater(c.expDate))
             .map((c) => ({
                 slug: `${c.idNum.slice(-4)}-${c.certNum}`,
+                name: c.name,
                 certType: certTypeMap[c.certType as keyof typeof certTypeMap] ?? c.certType,
-                expDate: c.expDate,
+                certNum: c.certNum,
             }));
         res.json({ results });
     } catch (err) {

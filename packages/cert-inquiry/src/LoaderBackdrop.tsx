@@ -1,9 +1,10 @@
-import styles from "./LoaderBackdrop.module.css";
+import Backdrop from '@mui/material/Backdrop'
+import CircularProgress from '@mui/material/CircularProgress'
 
 export default function LoaderBackdrop() {
     return (
-        <div className={styles.backdrop}>
-            <div className={styles.spinner} />
-        </div>
-    );
+        <Backdrop open sx={{ zIndex: (theme) => theme.zIndex.modal + 1, color: '#fff' }}>
+            <CircularProgress color="inherit" />
+        </Backdrop>
+    )
 }

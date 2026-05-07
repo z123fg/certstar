@@ -2,8 +2,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { certTypeMap } from "@certstar/shared";
 import type { CertTypeCode } from "@certstar/shared";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
 import LoaderBackdrop from "./LoaderBackdrop";
-import styles from "./InquiryPage.module.css";
+import PageHeader from "./PageHeader";
 
 interface CertData {
     id: string;
@@ -50,77 +60,111 @@ export default function InquiryPage() {
             setState({ status: "error", message: "无效的证书链接" });
             return;
         }
-        fetch(`${API_URL}/inquiry/${slug}`)
+        const controller = new AbortController();
+        fetch(`${API_URL}/inquiry/${slug}`, { signal: controller.signal })
             .then(async (res) => {
-                const body = await res.json();
+                // Check status before parsing body — a non-JSON error body would
+                // otherwise throw a SyntaxError and swallow the real status.
                 if (res.status === 410) throw new Error("证书已过期");
+                const body = await res.json();
                 if (!res.ok) throw new Error(body.message ?? "查询失败");
                 setState({ status: "ok", cert: body.result as CertData });
             })
-            .catch((err: Error) =>
-                setState({ status: "error", message: err.message }),
-            );
+            .catch((err: Error) => {
+                if (err.name === "AbortError") return;
+                setState({ status: "error", message: err.message });
+            });
+        return () => controller.abort();
     }, [slug]);
 
     return (
-        <div className={styles.page}>
-            <header className={styles.header}>
-                <h1>证书查询</h1>
-            </header>
+        <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <PageHeader />
 
-            <main className={styles.main}>
+            <Box
+                component="main"
+                sx={{ flex: 1, px: 2, py: 3, maxWidth: 600, mx: "auto", width: "100%" }}
+            >
                 {state.status === "loading" && <LoaderBackdrop />}
 
                 {state.status === "error" && (
-                    <div className={styles.center}>
-                        <div className={styles.notFound}>
-                            <span className={styles.icon}>✕</span>
-                            <h2>{state.message}</h2>
-                        </div>
-                    </div>
+                    <Stack spacing={1.5} sx={{ pt: 8, alignItems: "center" }}>
+                        <Avatar sx={{ width: 52, height: 52, bgcolor: "#fdecea", color: "error.dark", fontSize: "1.4rem", fontWeight: 700 }}>
+                            ✕
+                        </Avatar>
+                        <Typography variant="body1" color="text.primary" sx={{ fontWeight: 500 }}>
+                            {state.message}
+                        </Typography>
+                    </Stack>
                 )}
 
                 {state.status === "ok" && <CertCard cert={state.cert} />}
-            </main>
-        </div>
+            </Box>
+        </Box>
     );
 }
 
 function CertCard({ cert }: { cert: CertData }) {
-    const certTypeName =
-        certTypeMap[cert.certType as CertTypeCode] ?? cert.certType;
+    const certTypeName = certTypeMap[cert.certType as CertTypeCode] ?? cert.certType;
+
     return (
-        <div className={styles.card}>
-            <div className={styles.validBadge}>有效</div>
+        <Paper elevation={2} sx={{ borderRadius: 3, overflow: "hidden", position: "relative" }}>
+            <Chip
+                label="有效"
+                size="small"
+                sx={{
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    zIndex: 1,
+                    bgcolor: "#e8f5e9",
+                    color: "#2e7d32",
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                }}
+            />
 
             {cert.certImageUrl && (
-                <div className={styles.certImageWrap}>
-                    <img
+                <Box sx={{ width: "100%", bgcolor: "#f0f0f0", display: "flex", justifyContent: "center", p: 2 }}>
+                    <Box
+                        component="img"
                         src={cert.certImageUrl}
                         alt="证书"
-                        className={styles.certImage}
+                        sx={{ width: "100%", maxWidth: 500, height: "auto", borderRadius: 1, boxShadow: 1 }}
                     />
-                </div>
+                </Box>
             )}
 
-            <div className={styles.fields}>
-                <Field label="姓名" value={cert.name} />
-                <Field label="证件号码" value={maskIdNum(cert.idNum)} />
-                <Field label="工作单位" value={cert.organization} />
-                <Field label="证书编号" value={cert.certNum} />
-                <Field label="证书类型" value={certTypeName} />
-                <Field label="颁发机构" value={cert.issuingAgency} />
-                <Field label="有效期至" value={formatDate(cert.expDate)} />
-            </div>
-        </div>
+            <Table
+                size="small"
+                sx={{ "& .MuiTableCell-root": { borderColor: "divider", py: 1.5, px: 2.5, verticalAlign: "middle" } }}
+            >
+                <TableBody>
+                    {[
+                        ["姓名", cert.name],
+                        ["证件号码", maskIdNum(cert.idNum)],
+                        ["工作单位", cert.organization],
+                        ["证书编号", cert.certNum],
+                        ["证书类型", certTypeName],
+                        ["颁发机构", cert.issuingAgency],
+                        ["有效期至", formatDate(cert.expDate)],
+                    ].map(([label, value]) => (
+                        <TableRow key={label}>
+                            <TableCell
+                                component="th"
+                                scope="row"
+                                sx={{ whiteSpace: "nowrap", color: "text.secondary", fontSize: "0.8rem" }}
+                            >
+                                {label}
+                            </TableCell>
+                            <TableCell sx={{ fontSize: "0.95rem", overflowWrap: "break-word" }}>
+                                {value}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </Paper>
     );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-    return (
-        <div className={styles.field}>
-            <span className={styles.fieldLabel}>{label}</span>
-            <span className={styles.fieldValue}>{value}</span>
-        </div>
-    );
-}

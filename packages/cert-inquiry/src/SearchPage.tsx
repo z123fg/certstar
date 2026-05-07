@@ -1,107 +1,205 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import LoaderBackdrop from "./LoaderBackdrop";
-import styles from "./SearchPage.module.css";
+import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import PageHeader from "./PageHeader";
 
 interface SearchResult {
     slug: string;
+    name: string;
     certType: string;
-    expDate: string;
+    certNum: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL as string;
-
-const CHINA_DATE_FMT = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-});
-
-function formatDate(iso: string) {
-    return CHINA_DATE_FMT.format(new Date(iso));
-}
+const DEBOUNCE_MS = 300;
 
 export default function SearchPage() {
     const navigate = useNavigate();
     const [idNum, setIdNum] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [results, setResults] = useState<SearchResult[] | null>(null);
+    const [open, setOpen] = useState(false);
+    const [results, setResults] = useState<SearchResult[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
+    const highlightedRef = useRef<SearchResult | null>(null);
 
-    const handleSearch = async () => {
-        const trimmed = idNum.trim();
-        if (!trimmed) return;
-        setError("");
-        setResults(null);
-        setLoading(true);
+    const search = async (value: string) => {
+        if (abortRef.current) abortRef.current.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
         try {
             const res = await fetch(
-                `${API_URL}/inquiry/search?idNum=${encodeURIComponent(trimmed)}`,
+                `${API_URL}/inquiry/search?idNum=${encodeURIComponent(value)}`,
+                { signal: controller.signal },
             );
             const body = await res.json();
             if (!res.ok) throw new Error(body.message ?? "查询失败");
-            const list: SearchResult[] = body.results;
-            if (list.length === 0) {
-                setError("未找到对应的证书");
-            } else if (list.length === 1) {
-                navigate(`/${list[0].slug}`);
-            } else {
-                setResults(list);
-            }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "查询失败");
+            setResults(body.results as SearchResult[]);
+        } catch (err) {
+            if ((err as Error).name === "AbortError") return;
+            setResults([]);
+            setError("查询失败，请稍后重试");
         } finally {
             setLoading(false);
         }
     };
 
+    const handleInputChange = (value: string) => {
+        setIdNum(value);
+        if (!value.trim()) {
+            setResults([]);
+            setOpen(false);
+            setLoading(false);
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            if (abortRef.current) abortRef.current.abort();
+            return;
+        }
+        setOpen(true);
+        setError(null);
+        setLoading(true); // show spinner immediately during debounce
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(
+            () => search(value.trim()),
+            DEBOUNCE_MS,
+        );
+    };
+
+    const navigateToFirst = () => {
+        if (results.length > 0) navigate(`/${results[0].slug}`);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            if (abortRef.current) abortRef.current.abort();
+        };
+    }, []);
+
     return (
-        <div className={styles.page}>
-            {loading && <LoaderBackdrop />}
-            <header className={styles.header}>
-                <h1>证书查询</h1>
-            </header>
-            <main className={styles.main}>
-                <div className={styles.searchBox}>
-                    <p className={styles.hint}>请输入您的身份证号码</p>
-                    <div className={styles.inputRow}>
-                        <input
-                            className={styles.input}
-                            type="text"
-                            placeholder="身份证号码"
-                            value={idNum}
-                            onChange={(e) => setIdNum(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+        <Box
+            sx={{
+                minHeight: "100vh",
+                display: "flex",
+                flexDirection: "column",
+            }}
+        >
+            <PageHeader />
+
+            <Box
+                component="main"
+                sx={{
+                    flex: 1,
+                    px: 2,
+                    py: 5,
+                    maxWidth: 480,
+                    mx: "auto",
+                    width: "100%",
+                }}
+            >
+                <Paper
+                    elevation={2}
+                    sx={{ borderRadius: 3, p: "28px 24px", marginTop: "50px" }}
+                >
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ textAlign: "center", mb: 2 }}
+                    >
+                        请输入您的身份证号码
+                    </Typography>
+
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                        <Autocomplete
+                            sx={{ flex: 1 }}
+                            options={results}
+                            getOptionLabel={(o) => o.name}
+                            filterOptions={(x) => x}
+                            loading={loading}
+                            loadingText={null}
+                            noOptionsText={error ?? "未找到证书"}
+                            open={open}
+                            onClose={(_, reason) => {
+                                if (reason === "blur" || reason === "escape")
+                                    setOpen(false);
+                            }}
+                            value={null}
+                            inputValue={idNum}
+                            onInputChange={(_, value, reason) => {
+                                if (reason === "input")
+                                    handleInputChange(value);
+                            }}
+                            onChange={(_, option) => {
+                                if (option) navigate(`/${option.slug}`);
+                            }}
+                            onHighlightChange={(_, option) => {
+                                highlightedRef.current = option;
+                            }}
+                            renderOption={(props, option) => {
+                                const { key, ...rest } =
+                                    props as typeof props & { key: string };
+                                return (
+                                    <li key={key} {...rest}>
+                                        <ListItemText
+                                            primary={option.name}
+                                            secondary={`${option.certType} · ${option.certNum}`}
+                                            slotProps={{
+                                                primary: {
+                                                    sx: {
+                                                        fontWeight: 600,
+                                                        color: "primary.main",
+                                                        fontSize: "0.95rem",
+                                                    },
+                                                },
+                                                secondary: {
+                                                    sx: { fontSize: "0.8rem" },
+                                                },
+                                            }}
+                                        />
+                                    </li>
+                                );
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    size="small"
+                                    placeholder="身份证号码"
+                                    autoComplete="off"
+                                    onKeyDown={(e) => {
+                                        if (
+                                            e.key === "Enter" &&
+                                            !highlightedRef.current
+                                        ) {
+                                            navigateToFirst();
+                                        }
+                                    }}
+                                />
+                            )}
                         />
-                        <button
-                            className={styles.button}
-                            onClick={handleSearch}
-                            disabled={!idNum.trim() || loading}
+
+                        <Button
+                            variant="contained"
+                            disableElevation
+                            disabled={loading || results.length === 0}
+                            onClick={navigateToFirst}
+                            sx={{
+                                height: 40,
+                                flexShrink: 0,
+                                bgcolor: "#1a3a6b",
+                                "&:hover": { bgcolor: "#15305a" },
+                            }}
                         >
                             查询
-                        </button>
-                    </div>
-                    {error && <p className={styles.error}>{error}</p>}
-                </div>
-
-                {results && (
-                    <div className={styles.results}>
-                        <p className={styles.resultsHint}>找到 {results.length} 张证书，请选择：</p>
-                        {results.map((r) => (
-                            <div
-                                key={r.slug}
-                                className={styles.resultItem}
-                                onClick={() => navigate(`/${r.slug}`)}
-                            >
-                                <span className={styles.certType}>{r.certType}</span>
-                                <span className={styles.expDate}>有效期至 {formatDate(r.expDate)}</span>
-                                <span className={styles.arrow}>›</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </main>
-        </div>
+                        </Button>
+                    </Box>
+                </Paper>
+            </Box>
+        </Box>
     );
 }
