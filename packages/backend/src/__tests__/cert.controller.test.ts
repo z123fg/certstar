@@ -52,14 +52,14 @@ describe('handlePrismaError', () => {
     expect(handlePrismaError(err)).toEqual({ status: 400, message: 'Related record not found' });
   });
 
-  it('unknown code → 400 with err.message', () => {
+  it('unknown code → 500 internal server error', () => {
     const err = { code: 'P9999', message: 'something went wrong' };
-    expect(handlePrismaError(err)).toEqual({ status: 400, message: 'something went wrong' });
+    expect(handlePrismaError(err)).toEqual({ status: 500, message: 'Internal server error' });
   });
 
-  it('no message → falls back to "Unknown error"', () => {
+  it('no message → 500 internal server error', () => {
     const err = { code: 'P9999' };
-    expect(handlePrismaError(err)).toEqual({ status: 400, message: 'Unknown error' });
+    expect(handlePrismaError(err)).toEqual({ status: 500, message: 'Internal server error' });
   });
 
   it('P2002 with multiple targets → uses first field', () => {
@@ -136,15 +136,15 @@ describe('deleteMany', () => {
     expect(json).toHaveBeenCalledWith({ message: 'certNum already exists' });
   });
 
-  it('handles unexpected error → 400 with message', async () => {
+  it('handles unexpected error → 500 internal server error', async () => {
     mockDeleteMany.mockRejectedValue({ code: 'P9999', message: 'unexpected' });
     const req = makeReq({ body: { ids: ['id1'] } });
     const { res, status, json } = makeRes();
 
     await deleteMany(req, res);
 
-    expect(status).toHaveBeenCalledWith(400);
-    expect(json).toHaveBeenCalledWith({ message: 'unexpected' });
+    expect(status).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith({ message: 'Internal server error' });
   });
 
   it('deletes single item correctly', async () => {

@@ -1,0 +1,134 @@
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: #1a3a6b;
+    color: #fff;
+    padding: 16px 20px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.main {
+    flex: 1;
+    padding: 40px 16px;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.searchBox {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 28px 24px;
+}
+
+.hint {
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0 0 16px;
+    text-align: center;
+}
+
+.inputRow {
+    display: flex;
+    gap: 8px;
+}
+
+.input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.input:focus {
+    border-color: #1a3a6b;
+}
+
+.button {
+    padding: 10px 20px;
+    background: #1a3a6b;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.button:not(:disabled):hover {
+    opacity: 0.85;
+}
+
+.error {
+    margin: 12px 0 0;
+    font-size: 0.875rem;
+    color: #d32f2f;
+    text-align: center;
+}
+
+.results {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.resultsHint {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0 0 4px;
+}
+
+.resultItem {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+}
+
+.resultItem:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.certType {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a3a6b;
+    flex: 1;
+}
+
+.expDate {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.arrow {
+    font-size: 1.2rem;
+    color: #bbb;
+}

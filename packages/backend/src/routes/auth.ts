@@ -11,8 +11,9 @@ router.post("/login", (req: Request, res: Response) => {
     return;
   }
 
-  const token = jwt.sign({ username }, process.env.JWT_SECRET!, { expiresIn: "8h" });
-  res.json({ token, expiresIn: 28800 });
+  const expiresIn = 8 * 60 * 60;
+  const token = jwt.sign({ username }, process.env.JWT_SECRET!, { expiresIn });
+  res.json({ token, expiresIn });
 });
 
 export default router;

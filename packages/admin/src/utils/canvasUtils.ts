@@ -5,10 +5,15 @@ import type { Cert } from "../types";
 // ─── Canvas dimensions (A4 at 300dpi) ────────────────────────────────────────
 const ORIGINAL_WIDTH = 2481;
 export const ORIGINAL_HEIGHT = 3509;
-let currentZoom = 0.4;
+// Display at actual print size: screen is 96dpi, canvas is 300dpi
+export const PRINT_ZOOM = 96 / 300;
+let currentZoom = PRINT_ZOOM;
 
 // ─── Default positions for each text field ───────────────────────────────────
-const DEFAULT_TEXT_PROPS: Record<string, fabric.ITextOptions & { left: number; top: number }> = {
+const DEFAULT_TEXT_PROPS: Record<
+    string,
+    fabric.ITextOptions & { left: number; top: number }
+> = {
     name: {
         left: 1175,
         top: 1765,
@@ -90,9 +95,13 @@ export const getCanvas = () => canvas;
 // Plain helper instead of prototype extension — avoids declaration merging issues
 type FabricEntry = fabric.Object & { entry?: string };
 const getObjsByEntry = (entry: string): FabricEntry[] =>
-    (canvas?.getObjects() ?? []).filter((o): o is FabricEntry => (o as FabricEntry).entry === entry);
+    (canvas?.getObjects() ?? []).filter(
+        (o): o is FabricEntry => (o as FabricEntry).entry === entry,
+    );
 
 // ─── Init / destroy ───────────────────────────────────────────────────────────
+export const loadFonts = async () => document.fonts.load("60px SimSun");
+
 export const initCanvas = (canvasId = "main-canvas", zoom = currentZoom) => {
     destroyCanvas();
     currentZoom = zoom;
@@ -124,29 +133,43 @@ export const destroyCanvas = () => {
 // ─── Template ────────────────────────────────────────────────────────────────
 export type CertVariant = "stamped" | "stampless";
 
-export const loadTemplate = (certType: string, variant: CertVariant = "stamped"): Promise<void> =>
-    new Promise((resolve) => {
-        fabric.Image.fromURL(`/cert-template/${variant}/${certType}.jpg`, (img: fabric.Image) => {
-            if (!canvas) return resolve();
-            getObjsByEntry("template").forEach((o) => canvas!.remove(o));
-            (img as FabricEntry).entry = "template";
-            img.set({
-                left: 0,
-                top: 0,
-                scaleX: ORIGINAL_WIDTH / img.width!,
-                scaleY: ORIGINAL_HEIGHT / img.height!,
-                selectable: false,
-                lockMovementX: true,
-                lockMovementY: true,
-            });
-            canvas.add(img).sendToBack(img).renderAll();
-            resolve();
-        });
+export const loadTemplate = (
+    certType: string,
+    variant: CertVariant = "stamped",
+): Promise<void> =>
+    new Promise((resolve, reject) => {
+        fabric.Image.fromURL(
+            `/cert-template/${variant}/${certType}.jpg`,
+            (img: fabric.Image) => {
+                if (!canvas) return resolve();
+                if (!img.width || !img.height) {
+                    reject(
+                        new Error(
+                            `Template not found: ${variant}/${certType}.jpg`,
+                        ),
+                    );
+                    return;
+                }
+                getObjsByEntry("template").forEach((o) => canvas!.remove(o));
+                (img as FabricEntry).entry = "template";
+                img.set({
+                    left: 0,
+                    top: 0,
+                    scaleX: ORIGINAL_WIDTH / img.width!,
+                    scaleY: ORIGINAL_HEIGHT / img.height!,
+                    selectable: false,
+                    lockMovementX: true,
+                    lockMovementY: true,
+                });
+                canvas.add(img).sendToBack(img).renderAll();
+                resolve();
+            },
+        );
     });
 
 // ─── Text fields ─────────────────────────────────────────────────────────────
 const getTextValue = (key: string, value: string) => {
-    if (key === "expDate") return new Date(value).getFullYear().toString();
+    if (key === "expDate") return new Date(value).getUTCFullYear().toString();
     return value;
 };
 
@@ -158,11 +181,21 @@ const adjustTextSize = (obj: FabricTextEntry) => {
     if (!defaults) return;
 
     if (obj.width! < 450) {
-        obj.set({ originX: "center", left: 1175, scaleX: 1, top: defaults.top });
+        obj.set({
+            originX: "center",
+            left: 1175,
+            scaleX: 1,
+            top: defaults.top,
+        });
     } else if (obj.width! < 622) {
         obj.set({ originX: "left", left: 957, top: defaults.top });
     } else if (obj.width! < 1244) {
-        obj.set({ originX: "left", left: 957, scaleX: 622 / obj.width!, top: defaults.top });
+        obj.set({
+            originX: "left",
+            left: 957,
+            scaleX: 622 / obj.width!,
+            top: defaults.top,
+        });
     } else {
         const mid = Math.round(obj.text!.length / 2);
         obj.set({
@@ -178,7 +211,13 @@ const adjustTextSize = (obj: FabricTextEntry) => {
 
 export const renderTextFields = (cert: Partial<Cert>) => {
     if (!canvas) return;
-    const fields = ["name", "idNum", "organization", "certNum", "expDate"] as const;
+    const fields = [
+        "name",
+        "idNum",
+        "organization",
+        "certNum",
+        "expDate",
+    ] as const;
     fields.forEach((key) => {
         const value = String(cert[key] ?? "");
         const defaults = DEFAULT_TEXT_PROPS[key];
@@ -191,12 +230,22 @@ export const renderTextFields = (cert: Partial<Cert>) => {
             return;
         }
 
-        const savedLeft = cert[`${key}Left` as keyof Cert] as number | undefined;
+        const savedLeft = cert[`${key}Left` as keyof Cert] as
+            | number
+            | undefined;
         const savedTop = cert[`${key}Top` as keyof Cert] as number | undefined;
-        const savedScaleX = cert[`${key}ScaleX` as keyof Cert] as number | undefined;
-        const savedScaleY = cert[`${key}ScaleY` as keyof Cert] as number | undefined;
-        const savedAngle = cert[`${key}Angle` as keyof Cert] as number | undefined;
-        const savedOriginX = cert[`${key}OriginX` as keyof Cert] as string | undefined;
+        const savedScaleX = cert[`${key}ScaleX` as keyof Cert] as
+            | number
+            | undefined;
+        const savedScaleY = cert[`${key}ScaleY` as keyof Cert] as
+            | number
+            | undefined;
+        const savedAngle = cert[`${key}Angle` as keyof Cert] as
+            | number
+            | undefined;
+        const savedOriginX = cert[`${key}OriginX` as keyof Cert] as
+            | string
+            | undefined;
 
         const obj = new fabric.Text(getTextValue(key, value), {
             ...CONTROL_STYLE,
@@ -216,7 +265,10 @@ export const renderTextFields = (cert: Partial<Cert>) => {
 };
 
 // ─── Profile image ────────────────────────────────────────────────────────────
-export const renderProfileImage = (dataUrl: string, cert?: Partial<Cert>): Promise<void> =>
+export const renderProfileImage = (
+    dataUrl: string,
+    cert?: Partial<Cert>,
+): Promise<void> =>
     new Promise((resolve) => {
         if (!canvas) return resolve();
         getObjsByEntry("profileImage").forEach((o) => canvas!.remove(o));
@@ -228,8 +280,12 @@ export const renderProfileImage = (dataUrl: string, cert?: Partial<Cert>): Promi
                 left: cert?.profileLeft ?? DEFAULT_IMAGE_PROPS.left,
                 top: cert?.profileTop ?? DEFAULT_IMAGE_PROPS.top,
                 angle: cert?.profileAngle ?? 0,
-                ...(cert?.profileScaleX != null ? { scaleX: cert.profileScaleX } : {}),
-                ...(cert?.profileScaleY != null ? { scaleY: cert.profileScaleY } : {}),
+                ...(cert?.profileScaleX != null
+                    ? { scaleX: cert.profileScaleX }
+                    : {}),
+                ...(cert?.profileScaleY != null
+                    ? { scaleY: cert.profileScaleY }
+                    : {}),
             });
             if (cert?.profileScaleX == null) img.scaleToHeight(410);
             canvas!.add(img).bringToFront(img).renderAll();
@@ -238,7 +294,10 @@ export const renderProfileImage = (dataUrl: string, cert?: Partial<Cert>): Promi
     });
 
 // ─── QR code ─────────────────────────────────────────────────────────────────
-export const renderQRCode = async (idNum: string, certNum: string): Promise<void> => {
+export const renderQRCode = async (
+    idNum: string,
+    certNum: string,
+): Promise<void> => {
     if (!canvas || !idNum || !certNum) return;
     const link = `${import.meta.env.VITE_CERT_INQUIRY_URL}/${idNum.slice(-4)}-${certNum}`;
     const dataUrl = await QRCode.toDataURL(link);
@@ -247,7 +306,13 @@ export const renderQRCode = async (idNum: string, certNum: string): Promise<void
             if (!canvas) return resolve();
             getObjsByEntry("qrcode").forEach((o) => canvas!.remove(o));
             (img as FabricEntry).entry = "qrcode";
-            img.set({ originX: "center", originY: "center", left: 740, top: 2743, angle: 0 });
+            img.set({
+                originX: "center",
+                originY: "center",
+                left: 740,
+                top: 2743,
+                angle: 0,
+            });
             img.scaleToWidth(300);
             canvas.add(img).bringToFront(img).renderAll();
             resolve();
@@ -285,7 +350,11 @@ export const getSnapshotLayout = (): Partial<Cert> => {
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 export const exportCanvasAsDataUrl = (): string =>
-    canvas?.toDataURL({ format: "png", multiplier: 1 / currentZoom, quality: 1 }) ?? "";
+    canvas?.toDataURL({
+        format: "png",
+        multiplier: 1 / currentZoom,
+        quality: 1,
+    }) ?? "";
 
 /**
  * Render a cert to a PNG Blob using a hidden off-screen canvas.
@@ -306,7 +375,8 @@ export const renderCertToBlob = async (
         await loadTemplate(cert.certType!, variant);
         renderTextFields(cert);
         if (profileDataUrl) await renderProfileImage(profileDataUrl, cert);
-        if (cert.idNum && cert.certNum) await renderQRCode(cert.idNum, cert.certNum);
+        if (cert.idNum && cert.certNum)
+            await renderQRCode(cert.idNum, cert.certNum);
         return await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
     } finally {
         destroyCanvas();

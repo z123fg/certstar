@@ -8,6 +8,7 @@ import { BatchProvider } from "./pages/Batch/BatchContext";
 import BatchUploadPage from "./pages/Batch/BatchUploadPage";
 import BatchPreviewPage from "./pages/Batch/BatchPreviewPage";
 import BatchDraftEditorPage from "./pages/Batch/BatchDraftEditorPage";
+import LoginPage from "./pages/LoginPage";
 import { getAll } from "./services/cert";
 import type { Cert } from "./types";
 
@@ -28,13 +29,23 @@ export const AppContext = createContext<AppContextValue>({} as AppContextValue);
 export const useAppContext = () => useContext(AppContext);
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
+  const [token, setToken] = useState<string | null>(() => {
+    const t = localStorage.getItem("token");
+    const exp = localStorage.getItem("tokenExp");
+    if (t && exp && Date.now() > Number(exp)) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("tokenExp");
+      return null;
+    }
+    return t;
+  });
   const [certs, setCerts] = useState<Cert[]>([]);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [alert, setAlert] = useState<AlertInfo | null>(null);
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("tokenExp");
     setToken(null);
     setCerts([]);
   };
@@ -43,9 +54,8 @@ export default function App() {
     setBackdropOpen(true);
     try {
       setCerts(await getAll());
-    } catch (err: any) {
-      if (err?.response?.status === 401) logout();
-      else setAlert({ type: "error", message: "获取证书列表失败" });
+    } catch {
+      setAlert({ type: "error", message: "获取证书列表失败" });
     } finally {
       setBackdropOpen(false);
     }
@@ -60,6 +70,7 @@ export default function App() {
       <Header token={token} setToken={setToken} />
       <Routes>
         <Route path="/" element={<CertListPage token={token} />} />
+        <Route path="/login" element={<LoginPage token={token} setToken={setToken} />} />
         <Route path="/certs/new" element={<CertEditorPage />} />
         <Route path="/certs/:id/edit" element={<CertEditorPage />} />
         <Route element={<BatchProvider />}>

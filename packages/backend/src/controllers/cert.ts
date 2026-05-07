@@ -1,14 +1,8 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { parseExpDate } from "@certstar/shared";
 import logger from "../logger";
+import prisma from "../lib/prisma";
 
-const prisma = new PrismaClient();
-
-/**
- * Parse and validate an expDate value from the request body.
- * Returns a Date representing midnight China time (Asia/Shanghai), or null if invalid.
- */
 const parseExpDateToDb = (raw: unknown): Date | null => {
   const normalized = parseExpDate(raw);
   if (!normalized) return null;
@@ -16,8 +10,13 @@ const parseExpDateToDb = (raw: unknown): Date | null => {
   return new Date(`${normalized}T00:00:00+08:00`);
 };
 
-// Maps Prisma error codes to HTTP status + human-readable message
-export const handlePrismaError = (err: any): { status: number; message: string } => {
+interface PrismaError {
+  code?: string;
+  meta?: { target?: string[] };
+  message?: string;
+}
+
+export const handlePrismaError = (err: PrismaError): { status: number; message: string } => {
   switch (err.code) {
     case "P2002":
       return { status: 409, message: `${err.meta?.target?.[0]} already exists` };
@@ -26,8 +25,14 @@ export const handlePrismaError = (err: any): { status: number; message: string }
     case "P2003":
       return { status: 400, message: "Related record not found" };
     default:
-      return { status: 400, message: err.message ?? "Unknown error" };
+      return { status: 500, message: "Internal server error" };
   }
+};
+
+// Strip auto-managed fields so clients can't inject them
+const sanitize = (body: any) => {
+  const { id: _id, createdAt: _c, updatedAt: _u, ...data } = body;
+  return data;
 };
 
 export const getAll = async (_req: Request, res: Response) => {
@@ -58,7 +63,7 @@ export const createOne = async (req: Request, res: Response) => {
     return;
   }
   try {
-    const cert = await prisma.cert.create({ data: { ...req.body, expDate } });
+    const cert = await prisma.cert.create({ data: { ...sanitize(req.body), expDate } });
     logger.info({ certId: cert.id }, "Cert created");
     res.status(201).json({ result: cert });
   } catch (err: any) {
@@ -82,7 +87,7 @@ export const createMany = async (req: Request, res: Response) => {
   try {
     const certs = await prisma.$transaction(
       items.map((data) =>
-        prisma.cert.create({ data: { ...data, expDate: parseExpDateToDb(data.expDate)! } })
+        prisma.cert.create({ data: { ...sanitize(data), expDate: parseExpDateToDb(data.expDate)! } })
       )
     );
     logger.info({ count: certs.length }, "Batch certs created");
@@ -96,9 +101,18 @@ export const createMany = async (req: Request, res: Response) => {
 
 export const updateOne = async (req: Request, res: Response) => {
   try {
+    let expDate: Date | undefined;
+    if (req.body.expDate !== undefined) {
+      const parsed = parseExpDateToDb(req.body.expDate);
+      if (!parsed) {
+        res.status(400).json({ message: "expDate is invalid (expected yyyy-MM-dd)" });
+        return;
+      }
+      expDate = parsed;
+    }
     const cert = await prisma.cert.update({
       where: { id: String(req.params.id) },
-      data: { ...req.body, expDate: req.body.expDate ? parseExpDateToDb(req.body.expDate) ?? undefined : undefined },
+      data: { ...sanitize(req.body), expDate },
     });
     logger.info({ certId: cert.id }, "Cert updated");
     res.json({ result: cert });

@@ -22,7 +22,10 @@ export default function BatchDraftEditorPage() {
   } = useBatchContext();
 
   const draftIndex = Number(index);
-  const draft = Number.isInteger(draftIndex) ? rows[draftIndex] : undefined;
+  const draft =
+    Number.isInteger(draftIndex) && draftIndex >= 0 && draftIndex < rows.length
+      ? rows[draftIndex]
+      : undefined;
   const savedLayout = draft ? rowLayouts.get(draft._localId) : undefined;
 
   const [formData, setFormData] = useState<Partial<Cert>>(() =>

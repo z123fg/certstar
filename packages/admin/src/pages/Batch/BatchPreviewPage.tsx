@@ -15,7 +15,7 @@ import { getUploadUrl } from "../../services/sts";
 import type { Cert, CertDraft } from "../../types";
 import {
   exportCanvasAsDataUrl, getSnapshotLayout, initCanvas, destroyCanvas,
-  loadTemplate, renderProfileImage, renderQRCode, renderTextFields,
+  loadFonts, loadTemplate, renderProfileImage, renderQRCode, renderTextFields,
 } from "../../utils/canvasUtils";
 import { validateCertDraft } from "../../utils/certValidation";
 import { useBatchContext } from "./BatchContext";
@@ -156,6 +156,7 @@ export default function BatchPreviewPage({ token }: Props) {
     const rendered: Rendered[] = [];
     const renderFailed: string[] = [];
 
+    await loadFonts();
     setProcessingMsg(`正在生成证书图片 0 / ${rows.length}...`);
     for (let i = 0; i < rows.length; i++) {
       if (signal.aborted) break;
@@ -199,10 +200,10 @@ export default function BatchPreviewPage({ token }: Props) {
     // No try/catch inside each callback — let any failure propagate to abort Promise.all
     let uploadedCount = 0;
     setProcessingMsg(`正在上传图片 0 / ${rendered.length}...`);
-    const payloads: Omit<Cert, "id" | "createdAt" | "updatedAt">[] = [];
+    const payloads = new Array<Omit<Cert, "id" | "createdAt" | "updatedAt">>(rendered.length);
     try {
       await Promise.all(
-        rendered.map(async ({ draft, certBlob, profileDataUrl, layout }) => {
+        rendered.map(async ({ draft, certBlob, profileDataUrl, layout }, i) => {
           const certFilename = `cert-image/${draft.certNum}.png`;
           await uploadObject(certFilename, "image/png", certBlob, signal);
 
@@ -220,12 +221,12 @@ export default function BatchPreviewPage({ token }: Props) {
 
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { _localId, ...draftWithoutLocalId } = draft;
-          payloads.push({
+          payloads[i] = {
             ...draftWithoutLocalId,
             certImageUrl: certFilename,
             ...(profileImageUrl ? { profileImageUrl } : {}),
             ...layout,
-          } as Omit<Cert, "id" | "createdAt" | "updatedAt">);
+          } as Omit<Cert, "id" | "createdAt" | "updatedAt">;
         })
       );
     } catch (err) {

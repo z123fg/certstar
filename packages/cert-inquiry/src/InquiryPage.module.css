@@ -1,0 +1,143 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: #1a3a6b;
+  color: #fff;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.main {
+  flex: 1;
+  padding: 24px 16px 40px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 60px;
+  color: #888;
+}
+
+.notFound {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fdecea;
+  color: #d32f2f;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.notFound h2 {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.validBadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #e8f5e9;
+  color: #2e7d32;
+  z-index: 1;
+}
+
+.validBadge[data-expired='true'] {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.certImageWrap {
+  width: 100%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.certImage {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+}
+
+.fields {
+  padding: 20px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.field:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.fieldLabel {
+  flex-shrink: 0;
+  width: 72px;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.fieldValue {
+  font-size: 0.95rem;
+  color: #222;
+  word-break: break-all;
+}
+
+.fieldValue[data-highlight='true'] {
+  color: #c62828;
+  font-weight: 600;
+}

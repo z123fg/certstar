@@ -9,6 +9,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import JSZip from "jszip";
 import { certTypeMap, toChineseDateString, toChineseDatetimeString } from "@certstar/shared";
@@ -70,7 +71,7 @@ interface Props {
 }
 
 export default function CertTable({ certs, onBatchDelete }: Props) {
-  const { setAlert } = useAppContext();
+  const { setAlert, refreshCerts } = useAppContext();
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -209,6 +210,9 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             },
           }}
         />
+        <Button size="medium" variant="outlined" startIcon={<RefreshIcon />} onClick={refreshCerts}>
+          刷新
+        </Button>
         <Button
           size="medium"
           variant={activeFilterCount > 0 ? "contained" : "outlined"}
