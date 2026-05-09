@@ -29,6 +29,8 @@ cd "$REPO_DIR"
 git pull
 
 # ── Install dependencies ──────────────────────────────────────────────────────
+echo "==> Removing old dependencies..."
+rm -rf "$REPO_DIR/node_modules" "$REPO_DIR/package-lock.json"
 echo "==> Installing dependencies..."
 npm install
 
