@@ -42,9 +42,13 @@ cd "$REPO_DIR"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 echo "==> Removing old build files..."
-rm -rf "$REPO_DIR/packages/backend/dist" \
+rm -rf "$REPO_DIR/packages/shared/dist" \
+       "$REPO_DIR/packages/backend/dist" \
        "$REPO_DIR/packages/admin/dist" \
        "$REPO_DIR/packages/cert-inquiry/dist"
+
+echo "==> Building shared..."
+npm run build -w @certstar/shared
 
 echo "==> Building backend..."
 npm run build -w @certstar/backend
