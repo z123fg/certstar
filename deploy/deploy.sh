@@ -35,9 +35,6 @@ echo "==> Installing dependencies..."
 npm install
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-echo "==> Building shared..."
-npm run build -w @certstar/shared
-
 echo "==> Building backend..."
 npm run build -w @certstar/backend
 
