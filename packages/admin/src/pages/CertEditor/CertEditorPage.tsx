@@ -21,7 +21,7 @@ import CertCanvas from "./CertCanvas";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import type { Cert } from "../../types";
 import { createOne, deleteOne, updateOne } from "../../services/cert";
-import { getProxiedImageDataUrl, getUploadUrl } from "../../services/sts";
+import { getUploadUrl } from "../../services/sts";
 import {
     exportCanvasAsDataUrl,
     getCanvas,
@@ -48,12 +48,7 @@ export default function CertEditorPage() {
     );
 
     useEffect(() => {
-        if (!formData.profileImageUrl) return;
-        showBackdrop(true);
-        getProxiedImageDataUrl(formData.profileImageUrl)
-            .then(setProfileImageDataUrl)
-            .catch(() => setAlert({ type: "error", message: "加载图片失败" }))
-            .finally(() => showBackdrop(false));
+        setProfileImageDataUrl(formData.profileImageUrl ?? "");
     }, [formData.profileImageUrl]);
 
     // Scroll canvas container to center once canvas has rendered
@@ -67,7 +62,7 @@ export default function CertEditorPage() {
             body: blob,
             headers: { "Content-Type": "image/png" },
         });
-        return filename;
+        return `${import.meta.env.VITE_OSS_BASE_URL}/${filename}`;
     };
 
     const uploadProfileImage = async (
@@ -82,7 +77,7 @@ export default function CertEditorPage() {
             body: blob,
             headers: { "Content-Type": "image/jpeg" },
         });
-        return filename;
+        return `${import.meta.env.VITE_OSS_BASE_URL}/${filename}`;
     };
 
     const handleSubmit = async () => {

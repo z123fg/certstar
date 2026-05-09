@@ -15,7 +15,6 @@ import JSZip from "jszip";
 import { certTypeMap, toChineseDateString, toChineseDatetimeString } from "@certstar/shared";
 import { useAppContext } from "../../App";
 import type { Cert } from "../../types";
-import { getProxiedImageDataUrl } from "../../services/sts";
 import { renderCertToBlob, triggerBlobDownload, type CertVariant } from "../../utils/canvasUtils";
 
 const COLUMNS: { key: keyof Cert; label: string; date?: "date" | "datetime" }[] = [
@@ -98,7 +97,9 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
   const filtered = certs
     .filter((c) =>
       !keyword ||
-      Object.values(c).some((v) => String(v).toLowerCase().includes(keyword.toLowerCase()))
+      [c.name, c.idNum, c.certNum, c.organization, c.issuingAgency].some(
+        (v) => v?.toLowerCase().includes(keyword.toLowerCase())
+      )
     )
     .filter((c) => filters.certType.length === 0 || filters.certType.includes(c.certType))
     .filter((c) => !filters.expDateFrom || toChineseDateString(c.expDate) >= filters.expDateFrom)
@@ -155,9 +156,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       const zip = new JSZip();
       // Render sequentially — canvas is a singleton
       for (const cert of selectedCerts) {
-        const profileDataUrl = cert.profileImageUrl
-          ? await getProxiedImageDataUrl(cert.profileImageUrl)
-          : "";
+        const profileDataUrl = cert.profileImageUrl ?? "";
         const blob = await renderCertToBlob(cert, profileDataUrl, variant);
         zip.file(`${cert.name}_${cert.certNum}.png`, blob);
       }

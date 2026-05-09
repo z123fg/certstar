@@ -5,6 +5,5 @@ import * as stsController from "../controllers/sts";
 const router = Router();
 
 router.post("/upload-url", requireAuth, stsController.getUploadUrl);
-router.get("/proxy-image", requireAuth, stsController.proxyImage);
 
 export default router;

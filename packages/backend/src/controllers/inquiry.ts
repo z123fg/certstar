@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { certTypeMap, toChineseDateString } from "@certstar/shared";
 import logger from "../logger";
 import prisma from "../lib/prisma";
-import oss from "../lib/oss";
 
 const isTodayOrLater = (expDate: Date): boolean => {
     const todayCN = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" });
@@ -57,20 +56,7 @@ export const getByCertSlug = async (req: Request, res: Response) => {
             return;
         }
 
-        const signedCertImageUrl = cert.certImageUrl
-            ? oss.signatureUrl(cert.certImageUrl, { expires: 3600 })
-            : null;
-        const signedProfileImageUrl = cert.profileImageUrl
-            ? oss.signatureUrl(cert.profileImageUrl, { expires: 3600 })
-            : null;
-
-        res.json({
-            result: {
-                ...cert,
-                certImageUrl: signedCertImageUrl,
-                profileImageUrl: signedProfileImageUrl,
-            },
-        });
+        res.json({ result: cert });
     } catch (err) {
         logger.error(err, "Failed to fetch cert for inquiry");
         res.status(500).json({ message: "Failed to fetch certificate" });

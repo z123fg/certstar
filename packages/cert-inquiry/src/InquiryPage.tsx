@@ -11,9 +11,10 @@ import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
+import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import LoaderBackdrop from "./LoaderBackdrop";
-import PageHeader from "./PageHeader";
+import PageLayout from "./PageLayout";
 
 interface CertData {
     id: string;
@@ -33,12 +34,7 @@ type State =
     | { status: "error"; message: string }
     | { status: "ok"; cert: CertData };
 
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-function maskIdNum(idNum: string) {
-    if (idNum.length <= 4) return idNum;
-    return "*".repeat(idNum.length - 4) + idNum.slice(-4);
-}
+import { API_URL } from "./config";
 
 const CHINA_DATE_FMT = new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -78,37 +74,48 @@ export default function InquiryPage() {
     }, [slug]);
 
     return (
-        <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-            <PageHeader />
+        <PageLayout>
+            {state.status === "loading" && <LoaderBackdrop />}
 
-            <Box
-                component="main"
-                sx={{ flex: 1, px: 2, py: 3, maxWidth: 600, mx: "auto", width: "100%" }}
-            >
-                {state.status === "loading" && <LoaderBackdrop />}
+            {state.status === "error" && (
+                <Stack spacing={1.5} sx={{ pt: 8, alignItems: "center" }}>
+                    <Avatar
+                        sx={{
+                            width: 52,
+                            height: 52,
+                            bgcolor: "#fdecea",
+                            color: "error.dark",
+                            fontSize: "1.4rem",
+                            fontWeight: 700,
+                        }}
+                    >
+                        ✕
+                    </Avatar>
+                    <Typography
+                        variant="body1"
+                        color="text.primary"
+                        sx={{ fontWeight: 500 }}
+                    >
+                        {state.message}
+                    </Typography>
+                </Stack>
+            )}
 
-                {state.status === "error" && (
-                    <Stack spacing={1.5} sx={{ pt: 8, alignItems: "center" }}>
-                        <Avatar sx={{ width: 52, height: 52, bgcolor: "#fdecea", color: "error.dark", fontSize: "1.4rem", fontWeight: 700 }}>
-                            ✕
-                        </Avatar>
-                        <Typography variant="body1" color="text.primary" sx={{ fontWeight: 500 }}>
-                            {state.message}
-                        </Typography>
-                    </Stack>
-                )}
-
-                {state.status === "ok" && <CertCard cert={state.cert} />}
-            </Box>
-        </Box>
+            {state.status === "ok" && <CertCard cert={state.cert} />}
+        </PageLayout>
     );
 }
 
 function CertCard({ cert }: { cert: CertData }) {
-    const certTypeName = certTypeMap[cert.certType as CertTypeCode] ?? cert.certType;
+    const certTypeName =
+        certTypeMap[cert.certType as CertTypeCode] ?? cert.certType;
+    const [imageLoaded, setImageLoaded] = useState(false);
 
     return (
-        <Paper elevation={2} sx={{ borderRadius: 3, overflow: "hidden", position: "relative" }}>
+        <Paper
+            elevation={2}
+            sx={{ borderRadius: 3, overflow: "hidden", position: "relative" }}
+        >
             <Chip
                 label="有效"
                 size="small"
@@ -125,24 +132,57 @@ function CertCard({ cert }: { cert: CertData }) {
             />
 
             {cert.certImageUrl && (
-                <Box sx={{ width: "100%", bgcolor: "#f0f0f0", display: "flex", justifyContent: "center", p: 2 }}>
+                <Box
+                    sx={{
+                        position: "relative",
+                        width: "100%",
+                        aspectRatio: "2481 / 3509",
+                    }}
+                >
+                    {!imageLoaded && (
+                        <Skeleton
+                            variant="rectangular"
+                            animation="wave"
+                            sx={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                            }}
+                        />
+                    )}
                     <Box
                         component="img"
                         src={cert.certImageUrl}
                         alt="证书"
-                        sx={{ width: "100%", maxWidth: 500, height: "auto", borderRadius: 1, boxShadow: 1 }}
+                        sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            display: "block",
+                            opacity: imageLoaded ? 1 : 0,
+                            transition: "opacity 0.3s",
+                        }}
+                        onLoad={() => setImageLoaded(true)}
                     />
                 </Box>
             )}
 
             <Table
                 size="small"
-                sx={{ "& .MuiTableCell-root": { borderColor: "divider", py: 1.5, px: 2.5, verticalAlign: "middle" } }}
+                sx={{
+                    "& .MuiTableCell-root": {
+                        borderColor: "divider",
+                        py: 1.5,
+                        px: 2.5,
+                        verticalAlign: "middle",
+                    },
+                }}
             >
                 <TableBody>
                     {[
                         ["姓名", cert.name],
-                        ["证件号码", maskIdNum(cert.idNum)],
+                        ["证件号码", cert.idNum],
                         ["工作单位", cert.organization],
                         ["证书编号", cert.certNum],
                         ["证书类型", certTypeName],
@@ -153,11 +193,20 @@ function CertCard({ cert }: { cert: CertData }) {
                             <TableCell
                                 component="th"
                                 scope="row"
-                                sx={{ whiteSpace: "nowrap", color: "text.secondary", fontSize: "0.8rem" }}
+                                sx={{
+                                    whiteSpace: "nowrap",
+                                    color: "text.secondary",
+                                    fontSize: "0.8rem",
+                                }}
                             >
                                 {label}
                             </TableCell>
-                            <TableCell sx={{ fontSize: "0.95rem", overflowWrap: "break-word" }}>
+                            <TableCell
+                                sx={{
+                                    fontSize: "0.95rem",
+                                    overflowWrap: "break-word",
+                                }}
+                            >
                                 {value}
                             </TableCell>
                         </TableRow>
@@ -167,4 +216,3 @@ function CertCard({ cert }: { cert: CertData }) {
         </Paper>
     );
 }
-

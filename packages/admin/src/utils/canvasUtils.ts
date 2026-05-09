@@ -164,6 +164,7 @@ export const loadTemplate = (
                 canvas.add(img).sendToBack(img).renderAll();
                 resolve();
             },
+            { crossOrigin: "anonymous" },
         );
     });
 
@@ -243,10 +244,6 @@ export const renderTextFields = (cert: Partial<Cert>) => {
         const savedAngle = cert[`${key}Angle` as keyof Cert] as
             | number
             | undefined;
-        const savedOriginX = cert[`${key}OriginX` as keyof Cert] as
-            | string
-            | undefined;
-
         const obj = new fabric.Text(getTextValue(key, value), {
             ...CONTROL_STYLE,
             ...defaults,
@@ -255,7 +252,7 @@ export const renderTextFields = (cert: Partial<Cert>) => {
             scaleX: savedScaleX ?? 1,
             scaleY: savedScaleY ?? 1,
             angle: savedAngle ?? 0,
-            originX: savedOriginX ?? "center",
+            originX: "center",
         }) as FabricTextEntry;
         obj.entry = key;
         adjustTextSize(obj);
@@ -273,24 +270,28 @@ export const renderProfileImage = (
         if (!canvas) return resolve();
         getObjsByEntry("profileImage").forEach((o) => canvas!.remove(o));
         if (!dataUrl) return resolve();
-        fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
-            (img as FabricEntry).entry = "profileImage";
-            img.set({
-                ...DEFAULT_IMAGE_PROPS,
-                left: cert?.profileLeft ?? DEFAULT_IMAGE_PROPS.left,
-                top: cert?.profileTop ?? DEFAULT_IMAGE_PROPS.top,
-                angle: cert?.profileAngle ?? 0,
-                ...(cert?.profileScaleX != null
-                    ? { scaleX: cert.profileScaleX }
-                    : {}),
-                ...(cert?.profileScaleY != null
-                    ? { scaleY: cert.profileScaleY }
-                    : {}),
-            });
-            if (cert?.profileScaleX == null) img.scaleToHeight(410);
-            canvas!.add(img).bringToFront(img).renderAll();
-            resolve();
-        });
+        fabric.Image.fromURL(
+            dataUrl,
+            (img: fabric.Image) => {
+                (img as FabricEntry).entry = "profileImage";
+                img.set({
+                    ...DEFAULT_IMAGE_PROPS,
+                    left: cert?.profileLeft ?? DEFAULT_IMAGE_PROPS.left,
+                    top: cert?.profileTop ?? DEFAULT_IMAGE_PROPS.top,
+                    angle: cert?.profileAngle ?? 0,
+                    ...(cert?.profileScaleX != null
+                        ? { scaleX: cert.profileScaleX }
+                        : {}),
+                    ...(cert?.profileScaleY != null
+                        ? { scaleY: cert.profileScaleY }
+                        : {}),
+                });
+                if (cert?.profileScaleX == null) img.scaleToHeight(410);
+                canvas!.add(img).bringToFront(img).renderAll();
+                resolve();
+            },
+            { crossOrigin: "anonymous" },
+        );
     });
 
 // ─── QR code ─────────────────────────────────────────────────────────────────
@@ -342,7 +343,6 @@ export const getSnapshotLayout = (): Partial<Cert> => {
             (snapshot as any)[`${key}ScaleX`] = obj.scaleX;
             (snapshot as any)[`${key}ScaleY`] = obj.scaleY;
             (snapshot as any)[`${key}Angle`] = obj.angle;
-            (snapshot as any)[`${key}OriginX`] = obj.originX;
         }
     });
     return snapshot;

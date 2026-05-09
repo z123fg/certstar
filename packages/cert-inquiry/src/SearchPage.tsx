@@ -7,7 +7,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import PageHeader from "./PageHeader";
+import PageLayout from "./PageLayout";
 
 interface SearchResult {
     slug: string;
@@ -16,7 +16,8 @@ interface SearchResult {
     certNum: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+import { API_URL } from "./config";
+
 const DEBOUNCE_MS = 300;
 
 export default function SearchPage() {
@@ -83,123 +84,102 @@ export default function SearchPage() {
     }, []);
 
     return (
-        <Box
-            sx={{
-                minHeight: "100vh",
-                display: "flex",
-                flexDirection: "column",
-            }}
-        >
-            <PageHeader />
-
-            <Box
-                component="main"
-                sx={{
-                    flex: 1,
-                    px: 2,
-                    py: 5,
-                    maxWidth: 480,
-                    mx: "auto",
-                    width: "100%",
-                }}
+        <PageLayout maxWidth={480}>
+            <Paper
+                elevation={2}
+                sx={{ borderRadius: 3, p: "28px 24px", marginTop: "50px" }}
             >
-                <Paper
-                    elevation={2}
-                    sx={{ borderRadius: 3, p: "28px 24px", marginTop: "50px" }}
+                <Typography
+                    variant="subtitle1"
+                    sx={{ textAlign: "left", mb: 2, fontWeight: 500 }}
                 >
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ textAlign: "center", mb: 2 }}
+                    请输入完整身份证号码查询证书
+                </Typography>
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                    <Autocomplete
+                        sx={{ flex: 1 }}
+                        options={results}
+                        getOptionLabel={(o) => o.name}
+                        filterOptions={(x) => x}
+                        loading={loading}
+                        loadingText={null}
+                        noOptionsText={error ?? "未找到证书"}
+                        open={open}
+                        onClose={(_, reason) => {
+                            if (reason === "blur" || reason === "escape")
+                                setOpen(false);
+                        }}
+                        value={null}
+                        inputValue={idNum}
+                        onInputChange={(_, value, reason) => {
+                            if (reason === "input") handleInputChange(value);
+                        }}
+                        onChange={(_, option) => {
+                            if (option) navigate(`/${option.slug}`);
+                        }}
+                        onHighlightChange={(_, option) => {
+                            highlightedRef.current = option;
+                        }}
+                        renderOption={(props, option) => {
+                            const { key, ...rest } = props as typeof props & {
+                                key: string;
+                            };
+                            return (
+                                <li key={key} {...rest}>
+                                    <ListItemText
+                                        primary={option.name}
+                                        secondary={`${option.certType} · ${option.certNum}`}
+                                        slotProps={{
+                                            primary: {
+                                                sx: {
+                                                    fontWeight: 600,
+                                                    color: "primary.main",
+                                                    fontSize: "0.95rem",
+                                                },
+                                            },
+                                            secondary: {
+                                                sx: { fontSize: "0.8rem" },
+                                            },
+                                        }}
+                                    />
+                                </li>
+                            );
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                size="small"
+                                placeholder="身份证号码"
+                                autoComplete="off"
+                                onKeyDown={(e) => {
+                                    if (
+                                        e.key === "Enter" &&
+                                        !highlightedRef.current
+                                    ) {
+                                        navigateToFirst();
+                                    }
+                                }}
+                            />
+                        )}
+                    />
+
+                    <Button
+                        variant="contained"
+                        disableElevation
+                        disabled={loading || results.length === 0}
+                        onClick={navigateToFirst}
+                        sx={{
+                            height: 40,
+                            flexShrink: 0,
+                            bgcolor: "#1a3a6b",
+                            "&:hover": { bgcolor: "#15305a" },
+                        }}
                     >
-                        请输入您的身份证号码
-                    </Typography>
-
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                        <Autocomplete
-                            sx={{ flex: 1 }}
-                            options={results}
-                            getOptionLabel={(o) => o.name}
-                            filterOptions={(x) => x}
-                            loading={loading}
-                            loadingText={null}
-                            noOptionsText={error ?? "未找到证书"}
-                            open={open}
-                            onClose={(_, reason) => {
-                                if (reason === "blur" || reason === "escape")
-                                    setOpen(false);
-                            }}
-                            value={null}
-                            inputValue={idNum}
-                            onInputChange={(_, value, reason) => {
-                                if (reason === "input")
-                                    handleInputChange(value);
-                            }}
-                            onChange={(_, option) => {
-                                if (option) navigate(`/${option.slug}`);
-                            }}
-                            onHighlightChange={(_, option) => {
-                                highlightedRef.current = option;
-                            }}
-                            renderOption={(props, option) => {
-                                const { key, ...rest } =
-                                    props as typeof props & { key: string };
-                                return (
-                                    <li key={key} {...rest}>
-                                        <ListItemText
-                                            primary={option.name}
-                                            secondary={`${option.certType} · ${option.certNum}`}
-                                            slotProps={{
-                                                primary: {
-                                                    sx: {
-                                                        fontWeight: 600,
-                                                        color: "primary.main",
-                                                        fontSize: "0.95rem",
-                                                    },
-                                                },
-                                                secondary: {
-                                                    sx: { fontSize: "0.8rem" },
-                                                },
-                                            }}
-                                        />
-                                    </li>
-                                );
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    size="small"
-                                    placeholder="身份证号码"
-                                    autoComplete="off"
-                                    onKeyDown={(e) => {
-                                        if (
-                                            e.key === "Enter" &&
-                                            !highlightedRef.current
-                                        ) {
-                                            navigateToFirst();
-                                        }
-                                    }}
-                                />
-                            )}
-                        />
-
-                        <Button
-                            variant="contained"
-                            disableElevation
-                            disabled={loading || results.length === 0}
-                            onClick={navigateToFirst}
-                            sx={{
-                                height: 40,
-                                flexShrink: 0,
-                                bgcolor: "#1a3a6b",
-                                "&:hover": { bgcolor: "#15305a" },
-                            }}
-                        >
-                            查询
-                        </Button>
-                    </Box>
-                </Paper>
-            </Box>
-        </Box>
+                        查询
+                    </Button>
+                </Box>
+            </Paper>
+        </PageLayout>
     );
 }

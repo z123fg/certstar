@@ -206,13 +206,14 @@ export default function BatchPreviewPage({ token }: Props) {
         rendered.map(async ({ draft, certBlob, profileDataUrl, layout }, i) => {
           const certFilename = `cert-image/${draft.certNum}.png`;
           await uploadObject(certFilename, "image/png", certBlob, signal);
+          const certImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${certFilename}`;
 
           let profileImageUrl: string | undefined;
           if (profileDataUrl) {
             const profileBlob = await fetch(profileDataUrl, { signal }).then((r) => r.blob());
             const profileFilename = `profile-image/${draft.idNum}.jpg`;
             await uploadObject(profileFilename, "image/jpeg", profileBlob, signal);
-            profileImageUrl = profileFilename;
+            profileImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${profileFilename}`;
           }
 
           uploadedCount += 1;
@@ -223,7 +224,7 @@ export default function BatchPreviewPage({ token }: Props) {
           const { _localId, ...draftWithoutLocalId } = draft;
           payloads[i] = {
             ...draftWithoutLocalId,
-            certImageUrl: certFilename,
+            certImageUrl,
             ...(profileImageUrl ? { profileImageUrl } : {}),
             ...layout,
           } as Omit<Cert, "id" | "createdAt" | "updatedAt">;
