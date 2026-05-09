@@ -34,6 +34,12 @@ rm -rf "$REPO_DIR/node_modules" "$REPO_DIR/package-lock.json"
 echo "==> Installing dependencies..."
 npm install
 
+# ── Generate Prisma client ────────────────────────────────────────────────────
+echo "==> Generating Prisma client..."
+cd "$REPO_DIR/packages/backend"
+npx prisma generate
+cd "$REPO_DIR"
+
 # ── Build ─────────────────────────────────────────────────────────────────────
 echo "==> Building backend..."
 npm run build -w @certstar/backend
