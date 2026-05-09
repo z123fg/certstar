@@ -5,6 +5,7 @@ const oss = new OSS({
     accessKeyId: process.env.ALIYUN_ACCESS_KEY_ID!,
     accessKeySecret: process.env.ALIYUN_ACCESS_KEY_SECRET!,
     bucket: process.env.OSS_BUCKET!,
+    secure: true,
 });
 
 export default oss;
