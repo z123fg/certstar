@@ -41,9 +41,13 @@ type Rendered = {
 
 // Structured error for OSS upload failures — carries the filename and HTTP status if available
 class OssUploadError extends Error {
-  constructor(public readonly filename: string, public readonly status?: number) {
+  readonly filename: string;
+  readonly status?: number;
+  constructor(filename: string, status?: number) {
     super(status ? `HTTP ${status} uploading ${filename}` : `Network error uploading ${filename}`);
     this.name = "OssUploadError";
+    this.filename = filename;
+    this.status = status;
   }
 }
 
