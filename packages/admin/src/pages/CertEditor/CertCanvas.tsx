@@ -5,10 +5,11 @@ import { useCertCanvas } from "./useCertCanvas";
 interface Props {
     cert: Partial<Cert>;
     profileImageDataUrl: string;
+    onReady?: () => void;
 }
 
-export default function CertCanvas({ cert, profileImageDataUrl }: Props) {
-    useCertCanvas(cert, profileImageDataUrl);
+export default function CertCanvas({ cert, profileImageDataUrl, onReady }: Props) {
+    useCertCanvas(cert, profileImageDataUrl, onReady);
 
     return (
         <Box

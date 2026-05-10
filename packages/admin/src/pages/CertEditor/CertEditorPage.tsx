@@ -41,15 +41,16 @@ export default function CertEditorPage() {
     );
 
     const isFormValid = isCertDraftValid(formData);
-    const [profileImageDataUrl, setProfileImageDataUrl] = useState("");
+    const [profileImageDataUrl, setProfileImageDataUrl] = useState(() => formData.profileImageUrl ?? "");
     const [deleteOpen, setDeleteOpen] = useState(false);
+
+    useEffect(() => {
+        showBackdrop(true);
+        return () => showBackdrop(false);
+    }, []);
     const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(
         null,
     );
-
-    useEffect(() => {
-        setProfileImageDataUrl(formData.profileImageUrl ?? "");
-    }, [formData.profileImageUrl]);
 
     // Scroll canvas container to center once canvas has rendered
     const uploadCertImage = async (): Promise<string> => {
@@ -243,6 +244,7 @@ export default function CertEditorPage() {
                         <CertCanvas
                             cert={formData}
                             profileImageDataUrl={profileImageDataUrl}
+                            onReady={() => showBackdrop(false)}
                         />
                     </Box>
                 </Box>

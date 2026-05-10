@@ -14,9 +14,11 @@ import {
 export function useCertCanvas(
     cert: Partial<Cert>,
     profileImageDataUrl: string,
+    onReady?: () => void,
 ) {
     const [initialized, setInitialized] = useState(false);
     const certTypeRef = useRef<string | undefined>(undefined);
+    const initProfileUrlRef = useRef<string>(profileImageDataUrl);
 
     // ── Init: runs once on mount ───────────────────────────────────────────────
     // Captures cert/profileImageDataUrl at mount time intentionally —
@@ -28,18 +30,25 @@ export function useCertCanvas(
                 await loadFonts();
                 if (cancelled) return;
                 initCanvas("main-canvas", PRINT_ZOOM);
-                renderTextFields(cert);
+
                 if (cert.certType) {
                     certTypeRef.current = cert.certType;
                     await loadTemplate(cert.certType, "stamped");
                 }
+                renderTextFields(cert);
                 if (profileImageDataUrl)
                     await renderProfileImage(profileImageDataUrl, cert);
                 if (cert.idNum && cert.certNum)
                     await renderQRCode(cert.idNum, cert.certNum);
-                if (!cancelled) setInitialized(true);
+                if (!cancelled) {
+                    setInitialized(true);
+                    onReady?.();
+                }
             } catch (err) {
-                if (!cancelled) console.error("Canvas init failed:", err);
+                if (!cancelled) {
+                    console.error("Canvas init failed:", err);
+                    onReady?.();
+                }
             }
         })();
         return () => {
@@ -63,7 +72,14 @@ export function useCertCanvas(
     useEffect(() => {
         if (!initialized) return;
         renderTextFields(cert);
-    }, [initialized, cert.name, cert.idNum, cert.organization, cert.certNum, cert.expDate]);
+    }, [
+        initialized,
+        cert.name,
+        cert.idNum,
+        cert.organization,
+        cert.certNum,
+        cert.expDate,
+    ]);
 
     // ── QR code ───────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -74,6 +90,11 @@ export function useCertCanvas(
     // ── Profile image ─────────────────────────────────────────────────────────
     useEffect(() => {
         if (!initialized || !profileImageDataUrl) return;
+        // Skip if this URL was already rendered during init
+        if (profileImageDataUrl === initProfileUrlRef.current) {
+            initProfileUrlRef.current = "";
+            return;
+        }
         renderProfileImage(profileImageDataUrl, cert);
     }, [initialized, profileImageDataUrl]);
 }
