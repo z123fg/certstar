@@ -8,6 +8,7 @@ import CertForm from "../CertEditor/CertForm";
 import type { Cert, CertDraft } from "../../types";
 import { getSnapshotLayout } from "../../utils/canvasUtils";
 import { isCertDraftValid } from "../../utils/certValidation";
+import { useAppContext } from "../../App";
 import { useBatchContext } from "./BatchContext";
 import { readFileAsDataUrl } from "./fileUtils";
 
@@ -21,6 +22,7 @@ export default function BatchDraftEditorPage() {
     profileDataUrlOverrides, setProfileDataUrlOverrides,
   } = useBatchContext();
 
+  const { showBackdrop } = useAppContext();
   const draftIndex = Number(index);
   const draft =
     Number.isInteger(draftIndex) && draftIndex >= 0 && draftIndex < rows.length
@@ -36,6 +38,11 @@ export default function BatchDraftEditorPage() {
   );
 
   useEffect(() => {
+    showBackdrop(true);
+    return () => showBackdrop(false);
+  }, []);
+
+  useEffect(() => {
     if (!draft || profileImageDataUrl) return;
     const file = imageMap.get(draft.idNum);
     if (file) void readFileAsDataUrl(file).then(setProfileImageDataUrl);
@@ -44,7 +51,7 @@ export default function BatchDraftEditorPage() {
   if (!draft) {
     return (
       <Box sx={{ p: 3 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch")} size="small">返回</Button>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch/preview")} size="small">返回</Button>
         <Typography color="text.secondary" sx={{ mt: 3 }}>未找到这条批量草稿。</Typography>
       </Box>
     );
@@ -78,21 +85,20 @@ export default function BatchDraftEditorPage() {
         return next;
       });
     }
-    navigate("/batch");
+    navigate("/batch/preview");
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch")} size="small">返回</Button>
-        <Typography variant="h6">编辑批量草稿</Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
-          {draft.idNum}
-        </Typography>
-      </Stack>
-
       <Box sx={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
+        {/* Form panel */}
         <Box sx={{ width: 320, flexShrink: 0 }}>
+          <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
+            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch/preview")} size="small">
+              返回
+            </Button>
+            <Typography variant="h6">编辑批量草稿</Typography>
+          </Stack>
           <CertForm
             data={formData}
             profileImageDataUrl={profileImageDataUrl}
@@ -100,11 +106,18 @@ export default function BatchDraftEditorPage() {
             onProfileImageChange={setProfileImageDataUrl}
           />
           <Divider sx={{ my: 2 }} />
-          <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={!isCertDraftValid(formData)}>保存草稿</Button>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={!isCertDraftValid(formData)}>
+              保存草稿
+            </Button>
+          </Stack>
         </Box>
 
-        <Box sx={{ flex: 1 }}>
-          <CertCanvas cert={formData} profileImageDataUrl={profileImageDataUrl} />
+        {/* Canvas panel — shifted up, top overflow hidden */}
+        <Box sx={{ overflow: "hidden" }}>
+          <Box sx={{ mt: "-100px" }}>
+            <CertCanvas cert={formData} profileImageDataUrl={profileImageDataUrl} onReady={() => showBackdrop(false)} />
+          </Box>
         </Box>
       </Box>
     </Box>

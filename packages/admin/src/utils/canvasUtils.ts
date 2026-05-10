@@ -18,7 +18,7 @@ const DEFAULT_TEXT_PROPS: Record<
         left: 1175,
         top: 1765,
         fontSize: 60,
-        fontFamily: "SimSun",
+        fontFamily: "CertSimSun",
         fontWeight: 650,
         originX: "center",
         originY: "center",
@@ -28,7 +28,7 @@ const DEFAULT_TEXT_PROPS: Record<
         left: 1175,
         top: 1942,
         fontSize: 60,
-        fontFamily: "SimSun",
+        fontFamily: "CertSimSun",
         fontWeight: 650,
         originX: "center",
         originY: "center",
@@ -38,7 +38,7 @@ const DEFAULT_TEXT_PROPS: Record<
         left: 1175,
         top: 2100,
         fontSize: 60,
-        fontFamily: "SimSun",
+        fontFamily: "CertSimSun",
         fontWeight: 650,
         originX: "center",
         originY: "center",
@@ -48,7 +48,7 @@ const DEFAULT_TEXT_PROPS: Record<
         left: 1175,
         top: 2265,
         fontSize: 60,
-        fontFamily: "SimSun",
+        fontFamily: "CertSimSun",
         fontWeight: 650,
         originX: "center",
         originY: "center",
@@ -58,7 +58,7 @@ const DEFAULT_TEXT_PROPS: Record<
         left: 819,
         top: 2435,
         fontSize: 60,
-        fontFamily: "SimSun",
+        fontFamily: "CertSimSun",
         fontWeight: 650,
         originX: "center",
         originY: "center",
@@ -100,7 +100,18 @@ const getObjsByEntry = (entry: string): FabricEntry[] =>
     );
 
 // ─── Init / destroy ───────────────────────────────────────────────────────────
-export const loadFonts = async () => document.fonts.load("60px SimSun");
+let fontLoaded = false;
+export const loadFonts = async () => {
+    if (fontLoaded) return;
+    const font = new FontFace(
+        "CertSimSun",
+        `url(${import.meta.env.VITE_OSS_BASE_URL}/font/SimSun.ttf)`,
+        { weight: "100 900" },
+    );
+    await font.load();
+    document.fonts.add(font);
+    fontLoaded = true;
+};
 
 export const initCanvas = (canvasId = "main-canvas", zoom = currentZoom) => {
     destroyCanvas();

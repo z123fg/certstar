@@ -10,6 +10,7 @@ import BatchPreviewPage from "./pages/Batch/BatchPreviewPage";
 import BatchDraftEditorPage from "./pages/Batch/BatchDraftEditorPage";
 import LoginPage from "./pages/LoginPage";
 import { getAll } from "./services/cert";
+import { loadFonts } from "./utils/canvasUtils";
 import type { Cert } from "./types";
 
 interface AlertInfo {
@@ -62,7 +63,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (token) refreshCerts();
+    if (!token) {
+      loadFonts().catch(() => {});
+      return;
+    }
+    // On login: keep backdrop open until both certs and font are ready
+    setBackdropOpen(true);
+    Promise.all([
+      getAll().then(setCerts).catch(() => setAlert({ type: "error", message: "获取证书列表失败" })),
+      loadFonts().catch(() => {}),
+    ]).finally(() => setBackdropOpen(false));
   }, [token]);
 
   return (

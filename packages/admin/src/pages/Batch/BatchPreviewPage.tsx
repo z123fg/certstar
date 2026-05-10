@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Alert, Box, Button, Chip, IconButton, LinearProgress, Paper, Stack, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
+  Alert, Box, Button, Chip, IconButton, LinearProgress, Menu, MenuItem, Paper,
+  Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
+import JSZip from "jszip";
 import { certTypeMap } from "@certstar/shared";
 import { useAppContext } from "../../App";
 import { createMany } from "../../services/cert";
@@ -16,6 +18,7 @@ import type { Cert, CertDraft } from "../../types";
 import {
   exportCanvasAsDataUrl, getSnapshotLayout, initCanvas, destroyCanvas,
   loadFonts, loadTemplate, renderProfileImage, renderQRCode, renderTextFields,
+  triggerBlobDownload, type CertVariant,
 } from "../../utils/canvasUtils";
 import { validateCertDraft } from "../../utils/certValidation";
 import { useBatchContext } from "./BatchContext";
@@ -98,6 +101,7 @@ export default function BatchPreviewPage({ token }: Props) {
   const [processingMsg, setProcessingMsg] = useState("");
   const [successCount, setSuccessCount] = useState(0);
   const [pageAlert, setPageAlert] = useState<PageAlert | null>(null);
+  const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(null);
 
   // Abort controller — cancelled on unmount or explicit user cancel
   const abortRef = useRef<AbortController | null>(null);
@@ -132,8 +136,8 @@ export default function BatchPreviewPage({ token }: Props) {
   const removeRow = (index: number) =>
     setRows((prev) => prev.filter((_, i) => i !== index));
 
-  const handleSubmit = async () => {
-    // Pre-flight validation — check every row before touching canvas or network
+  // ── Shared: pre-flight validation ─────────────────────────────────────────
+  const validate = (): boolean => {
     const invalidRows = rows.flatMap((row, i) => {
       const errors = validateCertDraft(row);
       return errors.length > 0 ? [`第 ${i + 1} 行（${row.idNum}）：${errors.join("，")}`] : [];
@@ -143,23 +147,16 @@ export default function BatchPreviewPage({ token }: Props) {
         type: "error",
         message: `${invalidRows.length} 条数据校验失败，请修正后重试：${invalidRows.join("；")}`,
       });
-      return;
+      return false;
     }
-
     setPageAlert(null);
-    // total = rows.length (render phase) + rows.length (upload phase)
-    setTotal(rows.length * 2);
-    setProgress(0);
-    setStep("processing");
+    return true;
+  };
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const { signal } = controller;
-
-    // Phase 1 — render each cert image sequentially (canvas is a singleton)
+  // ── Shared: render all certs sequentially on the singleton canvas ──────────
+  const renderPhase = async (signal: AbortSignal, variant: CertVariant): Promise<{ rendered: Rendered[]; failed: string[] }> => {
     const rendered: Rendered[] = [];
-    const renderFailed: string[] = [];
-
+    const failed: string[] = [];
     await loadFonts();
     setProcessingMsg(`正在生成证书图片 0 / ${rows.length}...`);
     for (let i = 0; i < rows.length; i++) {
@@ -171,37 +168,43 @@ export default function BatchPreviewPage({ token }: Props) {
           profileDataUrlOverrides.get(draft._localId) ??
           (profileFile ? await readFileAsDataUrl(profileFile) : "");
         const savedLayout = rowLayouts.get(draft._localId);
-
         initCanvas("batch-canvas");
-        await loadTemplate(draft.certType, "stamped");
+        await loadTemplate(draft.certType, variant);
         renderTextFields({ ...draft, ...savedLayout } as Partial<Cert>);
         if (profileDataUrl) await renderProfileImage(profileDataUrl, savedLayout as Partial<Cert>);
         await renderQRCode(draft.idNum, draft.certNum);
-
         const certBlob = await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
         rendered.push({ draft, certBlob, profileDataUrl, layout: savedLayout ?? getSnapshotLayout() });
-      } catch {
-        renderFailed.push(draft.certNum);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") break;
+        failed.push(draft.certNum);
       }
       setProgress(i + 1);
       setProcessingMsg(`正在生成证书图片 ${i + 1} / ${rows.length}...`);
     }
-
     destroyCanvas();
+    return { rendered, failed };
+  };
 
+  // ── Upload + save to DB ────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setTotal(rows.length * 2); // render phase + upload phase
+    setProgress(0);
+    setStep("processing");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    const { rendered, failed } = await renderPhase(signal, "stamped");
     if (signal.aborted) return;
-
-    if (renderFailed.length > 0) {
-      setPageAlert({
-        type: "error",
-        message: `${renderFailed.length} 条证书图片生成失败，请检查对应数据后重试：${renderFailed.join("、")}`,
-      });
+    if (failed.length > 0) {
+      setPageAlert({ type: "error", message: `${failed.length} 条证书图片生成失败，请检查对应数据后重试：${failed.join("、")}` });
       setStep("preview");
       return;
     }
 
-    // Phase 2 — upload all rendered items concurrently
-    // No try/catch inside each callback — let any failure propagate to abort Promise.all
     let uploadedCount = 0;
     setProcessingMsg(`正在上传图片 0 / ${rendered.length}...`);
     const payloads = new Array<Omit<Cert, "id" | "createdAt" | "updatedAt">>(rendered.length);
@@ -211,7 +214,6 @@ export default function BatchPreviewPage({ token }: Props) {
           const certFilename = `cert-image/${draft.certNum}.png`;
           await uploadObject(certFilename, "image/png", certBlob, signal);
           const certImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${certFilename}`;
-
           let profileImageUrl: string | undefined;
           if (profileDataUrl) {
             const profileBlob = await fetch(profileDataUrl, { signal }).then((r) => r.blob());
@@ -219,11 +221,9 @@ export default function BatchPreviewPage({ token }: Props) {
             await uploadObject(profileFilename, "image/jpeg", profileBlob, signal);
             profileImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${profileFilename}`;
           }
-
           uploadedCount += 1;
           setProgress(rows.length + uploadedCount);
           setProcessingMsg(`正在上传图片 ${uploadedCount} / ${rendered.length}...`);
-
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { _localId, ...draftWithoutLocalId } = draft;
           payloads[i] = {
@@ -235,18 +235,12 @@ export default function BatchPreviewPage({ token }: Props) {
         })
       );
     } catch (err) {
-      // User navigated away or clicked cancel — skip all state updates
       if ((err as Error).name === "AbortError") return;
-      // At least one upload failed — do not touch DB, return to preview for retry
-      setPageAlert({
-        type: "error",
-        message: err instanceof OssUploadError ? ossErrorMessage(err) : "图片上传失败，请检查网络后重试",
-      });
+      setPageAlert({ type: "error", message: err instanceof OssUploadError ? ossErrorMessage(err) : "图片上传失败，请检查网络后重试" });
       setStep("preview");
       return;
     }
 
-    // All uploads succeeded — safe to write to DB
     try {
       await createMany(payloads);
       await refreshCerts();
@@ -260,6 +254,33 @@ export default function BatchPreviewPage({ token }: Props) {
     abortRef.current = null;
     setPageAlert({ type: "success", message: `成功上传 ${payloads.length} 条证书` });
     setStep("done");
+  };
+
+  // ── Download as ZIP ────────────────────────────────────────────────────────
+  const handleDownloadZip = async (variant: CertVariant) => {
+    setDownloadAnchor(null);
+    if (!validate()) return;
+    setTotal(rows.length);
+    setProgress(0);
+    setStep("processing");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    const { rendered, failed } = await renderPhase(signal, variant);
+    abortRef.current = null;
+    if (signal.aborted) return;
+    if (failed.length > 0) {
+      setPageAlert({ type: "error", message: `${failed.length} 条证书图片生成失败：${failed.join("、")}` });
+      setStep("preview");
+      return;
+    }
+
+    const zip = new JSZip();
+    rendered.forEach(({ draft, certBlob }) => zip.file(`${draft.certNum}.png`, certBlob));
+    triggerBlobDownload(await zip.generateAsync({ type: "blob" }), "certificates.zip");
+    setStep("preview");
   };
 
   return (
@@ -303,8 +324,20 @@ export default function BatchPreviewPage({ token }: Props) {
             <Button variant="outlined" onClick={() => navigate("/batch/upload")}>
               重新选择文件
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              disabled={rows.length === 0}
+              onClick={(e) => setDownloadAnchor(e.currentTarget)}
+            >
+              下载 ZIP（{rows.length} 条）
+            </Button>
+            <Menu anchorEl={downloadAnchor} open={Boolean(downloadAnchor)} onClose={() => setDownloadAnchor(null)}>
+              <MenuItem onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+              <MenuItem onClick={() => handleDownloadZip("stampless")}>无章版</MenuItem>
+            </Menu>
             <Button variant="contained" disabled={rows.length === 0} onClick={handleSubmit}>
-              开始生成并上传（{rows.length} 条）
+              生成并上传（{rows.length} 条）
             </Button>
           </Stack>
           <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: "calc(100vh - 220px)" }}>
@@ -325,7 +358,7 @@ export default function BatchPreviewPage({ token }: Props) {
                       <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>{row.idNum}</TableCell>
                       <TableCell>{row.certNum}</TableCell>
                       <TableCell>{row.expDate}</TableCell>
-                      <TableCell>{certTypeMap[row.certType]}</TableCell>
+                      <TableCell>{certTypeMap[row.certType] ?? row.certType}</TableCell>
                       <TableCell align="center">
                         {imageMap.has(row.idNum)
                           ? <CheckCircleIcon fontSize="small" color="success" />
@@ -375,7 +408,7 @@ export default function BatchPreviewPage({ token }: Props) {
             {progress} / {total} 步骤完成
           </Typography>
           <Button variant="outlined" color="error" onClick={handleCancel} sx={{ mt: 4 }}>
-            取消上传
+            取消
           </Button>
         </Box>
       )}

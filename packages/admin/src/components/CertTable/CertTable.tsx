@@ -158,7 +158,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       for (const cert of selectedCerts) {
         const profileDataUrl = cert.profileImageUrl ?? "";
         const blob = await renderCertToBlob(cert, profileDataUrl, variant);
-        zip.file(`${cert.name}_${cert.certNum}.png`, blob);
+        zip.file(`${cert.certNum}.png`, blob);
       }
       const zipBlob = await zip.generateAsync({ type: "blob" });
       triggerBlobDownload(zipBlob, `certificates-${variant}.zip`);

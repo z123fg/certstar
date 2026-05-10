@@ -125,7 +125,7 @@ export default function CertEditorPage() {
             );
             triggerBlobDownload(
                 blob,
-                `${formData.name}_${formData.certNum ?? "certificate"}.png`,
+                `${formData.certNum ?? "certificate"}.png`,
             );
         } catch {
             setAlert({ type: "error", message: "下载失败，请重试" });
