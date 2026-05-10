@@ -139,7 +139,7 @@ export const loadTemplate = (
 ): Promise<void> =>
     new Promise((resolve, reject) => {
         fabric.Image.fromURL(
-            `/cert-template/${variant}/${certType}.jpg`,
+            `${import.meta.env.VITE_OSS_BASE_URL}/cert-template/${variant}/${certType}.jpg`,
             (img: fabric.Image) => {
                 if (!canvas) return resolve();
                 if (!img.width || !img.height) {
