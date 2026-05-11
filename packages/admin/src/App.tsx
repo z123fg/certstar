@@ -24,6 +24,8 @@ interface AppContextValue {
   showBackdrop: (v: boolean) => void;
   setAlert: (v: AlertInfo | null) => void;
   logout: () => void;
+  complianceMode: boolean;
+  setComplianceMode: (v: boolean) => void;
 }
 
 export const AppContext = createContext<AppContextValue>({} as AppContextValue);
@@ -43,6 +45,7 @@ export default function App() {
   const [certs, setCerts] = useState<Cert[]>([]);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [alert, setAlert] = useState<AlertInfo | null>(null);
+  const [complianceMode, setComplianceMode] = useState(true);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -76,7 +79,7 @@ export default function App() {
   }, [token]);
 
   return (
-    <AppContext.Provider value={{ certs, refreshCerts, showBackdrop: setBackdropOpen, setAlert, logout }}>
+    <AppContext.Provider value={{ certs, refreshCerts, showBackdrop: setBackdropOpen, setAlert, logout, complianceMode, setComplianceMode }}>
       <Header token={token} setToken={setToken} />
       <Routes>
         <Route path="/" element={<CertListPage token={token} />} />

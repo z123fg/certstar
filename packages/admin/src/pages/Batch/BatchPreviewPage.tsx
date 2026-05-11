@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert, Box, Button, Chip, IconButton, LinearProgress, Menu, MenuItem, Paper,
-  Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
+  Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -92,7 +92,7 @@ const dbErrorMessage = (err: unknown): string => {
 
 export default function BatchPreviewPage({ token }: Props) {
   const navigate = useNavigate();
-  const { refreshCerts } = useAppContext();
+  const { refreshCerts, complianceMode } = useAppContext();
   const { rows, setRows, rowLayouts, profileDataUrlOverrides, imageMap } = useBatchContext();
 
   const [step, setStep] = useState<Step>("preview");
@@ -336,9 +336,13 @@ export default function BatchPreviewPage({ token }: Props) {
               <MenuItem onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
               <MenuItem onClick={() => handleDownloadZip("stampless")}>无章版</MenuItem>
             </Menu>
-            <Button variant="contained" disabled={rows.length === 0} onClick={handleSubmit}>
-              生成并上传（{rows.length} 条）
-            </Button>
+            <Tooltip title={complianceMode ? "当前模式不允许上传有章证书" : ""}>
+              <span>
+                <Button variant="contained" disabled={rows.length === 0 || complianceMode} onClick={handleSubmit}>
+                  生成并上传（{rows.length} 条）
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
           <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: "calc(100vh - 220px)" }}>
             <Table size="small" stickyHeader>

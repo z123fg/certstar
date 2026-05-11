@@ -116,7 +116,7 @@ export default function BatchDraftEditorPage() {
         {/* Canvas panel — shifted up, top overflow hidden */}
         <Box sx={{ overflow: "hidden" }}>
           <Box sx={{ mt: "-100px" }}>
-            <CertCanvas cert={formData} profileImageDataUrl={profileImageDataUrl} onReady={() => showBackdrop(false)} />
+            <CertCanvas cert={formData} profileImageDataUrl={profileImageDataUrl} onReady={() => showBackdrop(false)} onLoading={showBackdrop} />
           </Box>
         </Box>
       </Box>

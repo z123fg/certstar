@@ -2,7 +2,11 @@ import { certTypeMap, parseExpDate } from "@certstar/shared";
 import type { CertDraft } from "../types";
 
 const EXPECTED_COLUMNS = ["name", "idNum", "organization", "certNum", "expDate", "issuingAgency", "certType"] as const;
-const VALID_CERT_TYPES = new Set(Object.keys(certTypeMap));
+
+// Reverse map: Chinese label → abbreviation key (e.g. "焊接热处理操作人员" → "WTOP")
+const certTypeByLabel = Object.fromEntries(
+  Object.entries(certTypeMap).map(([code, label]) => [label, code])
+) as Record<string, string>;
 
 export interface CsvParseResult {
   rows: CertDraft[];
@@ -36,7 +40,8 @@ export const parseCertCsv = (text: string): CsvParseResult => {
       rowErrors.push(`证书编号 ${row.certNum} 重复`);
     }
     if (!parseExpDate(row.expDate)) rowErrors.push("有效期格式不正确，支持 yyyy-mm-dd 或 yyyy/mm/dd");
-    if (!VALID_CERT_TYPES.has(row.certType)) rowErrors.push(`证书类型 "${row.certType}" 无效`);
+    const certTypeCode = certTypeByLabel[row.certType];
+    if (!certTypeCode) rowErrors.push(`证书类型 "${row.certType}" 无效，请使用中文名称（如：焊接热处理操作人员）`);
 
     if (rowErrors.length > 0) {
       errors.push(`第 ${rowNum} 行：${rowErrors.join("，")}`);
@@ -52,7 +57,7 @@ export const parseCertCsv = (text: string): CsvParseResult => {
       certNum: row.certNum,
       expDate: parseExpDate(row.expDate)!,
       issuingAgency: row.issuingAgency,
-      certType: row.certType as CertDraft["certType"],
+      certType: certTypeCode as CertDraft["certType"],
     });
   });
 

@@ -7,6 +7,7 @@ import {
     Menu,
     MenuItem,
     Stack,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -34,7 +35,7 @@ import { isCertDraftValid } from "../../utils/certValidation";
 export default function CertEditorPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { certs, refreshCerts, setAlert, showBackdrop } = useAppContext();
+    const { certs, refreshCerts, setAlert, showBackdrop, complianceMode } = useAppContext();
     const isNew = !id;
     const [formData, setFormData] = useState<Partial<Cert>>(() =>
         (id ? certs.find((c) => c.id === id) : undefined) ?? { certType: "WTOP" }
@@ -196,14 +197,18 @@ export default function CertEditorPage() {
                         spacing={1}
                         sx={{ flexWrap: "wrap" }}
                     >
-                        <Button
-                            variant="contained"
-                            startIcon={<SaveIcon />}
-                            onClick={handleSubmit}
-                            disabled={!isFormValid}
-                        >
-                            提交
-                        </Button>
+                        <Tooltip title={complianceMode ? "当前模式不允许上传有章证书" : ""}>
+                            <span>
+                                <Button
+                                    variant="contained"
+                                    startIcon={<SaveIcon />}
+                                    onClick={handleSubmit}
+                                    disabled={!isFormValid || complianceMode}
+                                >
+                                    提交
+                                </Button>
+                            </span>
+                        </Tooltip>
                         <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
@@ -245,6 +250,7 @@ export default function CertEditorPage() {
                             cert={formData}
                             profileImageDataUrl={profileImageDataUrl}
                             onReady={() => showBackdrop(false)}
+                            onLoading={showBackdrop}
                         />
                     </Box>
                 </Box>

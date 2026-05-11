@@ -6,10 +6,11 @@ interface Props {
     cert: Partial<Cert>;
     profileImageDataUrl: string;
     onReady?: () => void;
+    onLoading?: (loading: boolean) => void;
 }
 
-export default function CertCanvas({ cert, profileImageDataUrl, onReady }: Props) {
-    useCertCanvas(cert, profileImageDataUrl, onReady);
+export default function CertCanvas({ cert, profileImageDataUrl, onReady, onLoading }: Props) {
+    useCertCanvas(cert, profileImageDataUrl, onReady, onLoading);
 
     return (
         <Box

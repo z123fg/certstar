@@ -66,7 +66,7 @@ export default function BatchUploadPage({ token }: Props) {
               </Button>
             </label>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-              必须包含列：name, idNum, organization, certNum, expDate, issuingAgency, certType
+              必须包含列：name, idNum, organization, certNum, expDate, issuingAgency, certType（中文名称，如：焊接热处理操作人员）
             </Typography>
           </Box>
 

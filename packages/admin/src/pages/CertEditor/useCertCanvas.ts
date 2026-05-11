@@ -15,6 +15,7 @@ export function useCertCanvas(
     cert: Partial<Cert>,
     profileImageDataUrl: string,
     onReady?: () => void,
+    onLoading?: (loading: boolean) => void,
 ) {
     const [initialized, setInitialized] = useState(false);
     const certTypeRef = useRef<string | undefined>(undefined);
@@ -63,9 +64,10 @@ export function useCertCanvas(
         if (!initialized || !cert.certType) return;
         if (cert.certType === certTypeRef.current) return;
         certTypeRef.current = cert.certType;
-        loadTemplate(cert.certType, "stamped").catch((err) =>
-            console.error("Failed to load template:", err),
-        );
+        onLoading?.(true);
+        loadTemplate(cert.certType, "stamped")
+            .catch((err) => console.error("Failed to load template:", err))
+            .finally(() => onLoading?.(false));
     }, [initialized, cert.certType]);
 
     // ── Text fields ───────────────────────────────────────────────────────────
