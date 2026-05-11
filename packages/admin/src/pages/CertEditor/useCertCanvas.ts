@@ -81,6 +81,7 @@ export function useCertCanvas(
         cert.organization,
         cert.certNum,
         cert.expDate,
+        cert.issuingAgency,
     ]);
 
     // ── QR code ───────────────────────────────────────────────────────────────

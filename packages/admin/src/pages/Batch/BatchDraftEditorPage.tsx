@@ -13,7 +13,7 @@ import { useBatchContext } from "./BatchContext";
 import { readFileAsDataUrl } from "./fileUtils";
 
 export default function BatchDraftEditorPage() {
-  const { index } = useParams();
+  const { localId } = useParams();
   const navigate = useNavigate();
   const {
     rows, setRows,
@@ -23,11 +23,8 @@ export default function BatchDraftEditorPage() {
   } = useBatchContext();
 
   const { showBackdrop } = useAppContext();
-  const draftIndex = Number(index);
-  const draft =
-    Number.isInteger(draftIndex) && draftIndex >= 0 && draftIndex < rows.length
-      ? rows[draftIndex]
-      : undefined;
+  const draftIndex = rows.findIndex((r) => r._localId === localId);
+  const draft = draftIndex !== -1 ? rows[draftIndex] : undefined;
   const savedLayout = draft ? rowLayouts.get(draft._localId) : undefined;
 
   const [formData, setFormData] = useState<Partial<Cert>>(() =>
@@ -70,7 +67,7 @@ export default function BatchDraftEditorPage() {
     } as CertDraft;
 
     const layout = getSnapshotLayout();
-    setRows((prev) => prev.map((row, i) => (i === draftIndex ? updatedDraft : row)));
+    setRows((prev) => prev.map((row) => row._localId === draft._localId ? updatedDraft : row));
     setRowLayouts((prev) => {
       const next = new Map(prev);
       next.delete(draft._localId);

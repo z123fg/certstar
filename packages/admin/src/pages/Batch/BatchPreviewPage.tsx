@@ -13,7 +13,6 @@ import JSZip from "jszip";
 import { certTypeMap } from "@certstar/shared";
 import { useAppContext } from "../../App";
 import { createMany } from "../../services/cert";
-import { getUploadUrl } from "../../services/sts";
 import type { Cert, CertDraft } from "../../types";
 import {
   exportCanvasAsDataUrl, getSnapshotLayout, initCanvas, destroyCanvas,
@@ -21,6 +20,7 @@ import {
   triggerBlobDownload, type CertVariant,
 } from "../../utils/canvasUtils";
 import { validateCertDraft } from "../../utils/certValidation";
+import { OssUploadError, ossErrorMessage, dbErrorMessage, uploadObject } from "../../utils/ossUtils";
 import { useBatchContext } from "./BatchContext";
 import { readFileAsDataUrl } from "./fileUtils";
 
@@ -42,53 +42,6 @@ type Rendered = {
   layout: Partial<Cert>;
 };
 
-// Structured error for OSS upload failures — carries the filename and HTTP status if available
-class OssUploadError extends Error {
-  readonly filename: string;
-  readonly status?: number;
-  constructor(filename: string, status?: number) {
-    super(status ? `HTTP ${status} uploading ${filename}` : `Network error uploading ${filename}`);
-    this.name = "OssUploadError";
-    this.filename = filename;
-    this.status = status;
-  }
-}
-
-const uploadObject = async (filename: string, mimeType: string, blob: Blob, signal?: AbortSignal) => {
-  let res: Response;
-  try {
-    res = await fetch(await getUploadUrl(filename, mimeType), {
-      method: "PUT",
-      body: blob,
-      headers: { "Content-Type": mimeType },
-      signal,
-    });
-  } catch (err) {
-    if ((err as Error).name === "AbortError") throw err; // let abort propagate as-is
-    throw new OssUploadError(filename);                  // network-level failure
-  }
-  if (!res.ok) throw new OssUploadError(filename, res.status);
-};
-
-// Human-readable message for an OSS upload failure
-const ossErrorMessage = (err: OssUploadError): string => {
-  const file = err.filename.split("/").pop() ?? err.filename;
-  if (!err.status) return `上传 ${file} 时网络连接失败，请检查网络后重试`;
-  if (err.status === 403) return `上传 ${file} 被拒绝（权限不足），请联系管理员`;
-  if (err.status >= 500) return `上传 ${file} 时服务器错误（${err.status}），请稍后重试`;
-  return `上传 ${file} 失败（${err.status}），请重试`;
-};
-
-// Human-readable message for a DB write failure (axios error)
-const dbErrorMessage = (err: unknown): string => {
-  const status = (err as any)?.response?.status as number | undefined;
-  const serverMsg = (err as any)?.response?.data?.message as string | undefined;
-  if (status === 409) return "部分证书已存在于数据库中，请检查是否重复提交";
-  if (status === 400) return serverMsg ? `数据格式错误：${serverMsg}` : "数据格式错误，请检查后重试";
-  if (status && status >= 500) return `服务器内部错误（${status}），请稍后重试`;
-  if (!status) return "网络连接失败，请检查网络后重试";
-  return `写入数据库失败（${status}），请重试`;
-};
 
 export default function BatchPreviewPage({ token }: Props) {
   const navigate = useNavigate();
@@ -189,7 +142,7 @@ export default function BatchPreviewPage({ token }: Props) {
   // ── Upload + save to DB ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validate()) return;
-    setTotal(rows.length * 2); // render phase + upload phase
+    setTotal(rows.length * 2); // render phase (rows.length steps) + upload phase (rows.length steps)
     setProgress(0);
     setStep("processing");
 
@@ -205,14 +158,13 @@ export default function BatchPreviewPage({ token }: Props) {
       return;
     }
 
-    let uploadedCount = 0;
     setProcessingMsg(`正在上传图片 0 / ${rendered.length}...`);
     const payloads = new Array<Omit<Cert, "id" | "createdAt" | "updatedAt">>(rendered.length);
     try {
       await Promise.all(
         rendered.map(async ({ draft, certBlob, profileDataUrl, layout }, i) => {
-          const certFilename = `cert-image/${draft.certNum}.png`;
-          await uploadObject(certFilename, "image/png", certBlob, signal);
+          const certFilename = `cert-image/${draft.certNum}.pdf`;
+          await uploadObject(certFilename, "application/pdf", certBlob, signal);
           const certImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${certFilename}`;
           let profileImageUrl: string | undefined;
           if (profileDataUrl) {
@@ -221,9 +173,11 @@ export default function BatchPreviewPage({ token }: Props) {
             await uploadObject(profileFilename, "image/jpeg", profileBlob, signal);
             profileImageUrl = `${import.meta.env.VITE_OSS_BASE_URL}/${profileFilename}`;
           }
-          uploadedCount += 1;
-          setProgress(rows.length + uploadedCount);
-          setProcessingMsg(`正在上传图片 ${uploadedCount} / ${rendered.length}...`);
+          setProgress((p) => {
+            const next = p + 1;
+            setProcessingMsg(`正在上传图片 ${next - rows.length} / ${rendered.length}...`);
+            return next;
+          });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { _localId, ...draftWithoutLocalId } = draft;
           payloads[i] = {
@@ -278,7 +232,7 @@ export default function BatchPreviewPage({ token }: Props) {
     }
 
     const zip = new JSZip();
-    rendered.forEach(({ draft, certBlob }) => zip.file(`${draft.certNum}.png`, certBlob));
+    rendered.forEach(({ draft, certBlob }) => zip.file(`${draft.certNum}.pdf`, certBlob));
     triggerBlobDownload(await zip.generateAsync({ type: "blob" }), "certificates.zip");
     setStep("preview");
   };
@@ -333,7 +287,11 @@ export default function BatchPreviewPage({ token }: Props) {
               下载 ZIP（{rows.length} 条）
             </Button>
             <Menu anchorEl={downloadAnchor} open={Boolean(downloadAnchor)} onClose={() => setDownloadAnchor(null)}>
-              <MenuItem onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+              <Tooltip title={complianceMode ? "当前模式不允许下载有章证书" : ""} placement="left">
+                <span>
+                  <MenuItem disabled={complianceMode} onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+                </span>
+              </Tooltip>
               <MenuItem onClick={() => handleDownloadZip("stampless")}>无章版</MenuItem>
             </Menu>
             <Tooltip title={complianceMode ? "当前模式不允许上传有章证书" : ""}>
@@ -381,7 +339,7 @@ export default function BatchPreviewPage({ token }: Props) {
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.5}>
-                          <IconButton size="small" onClick={() => navigate(`/batch/draft/${i}/edit`)}>
+                          <IconButton size="small" onClick={() => navigate(`/batch/draft/${encodeURIComponent(row._localId)}/edit`)}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                           <IconButton size="small" color="error" onClick={() => removeRow(i)}>

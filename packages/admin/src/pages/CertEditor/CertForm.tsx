@@ -12,6 +12,7 @@ interface Props {
   profileImageDataUrl: string;
   onChange: (data: Partial<Cert>) => void;
   onProfileImageChange: (dataUrl: string) => void;
+  disabledFields?: (keyof Cert)[];
 }
 
 const TEXT_FIELDS: { key: keyof Cert; required?: boolean }[] = [
@@ -24,7 +25,7 @@ const TEXT_FIELDS: { key: keyof Cert; required?: boolean }[] = [
 ];
 
 
-export default function CertForm({ data, profileImageDataUrl, onChange, onProfileImageChange }: Props) {
+export default function CertForm({ data, profileImageDataUrl, onChange, onProfileImageChange, disabledFields = [] }: Props) {
   const [touched, setTouched] = useState<Set<keyof Cert>>(new Set());
 
   const handleChange = (field: keyof Cert, value: string) => {
@@ -54,7 +55,7 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
 
   return (
     <Stack spacing={2}>
-      <FormControl size="small" fullWidth>
+      <FormControl size="small" fullWidth disabled={disabledFields.includes("certType")}>
         <InputLabel>{intl.certType}</InputLabel>
         <Select
           label={intl.certType}
@@ -69,6 +70,7 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
 
       {TEXT_FIELDS.map(({ key, required }) => {
         const error = getFieldError(key);
+        const isDisabled = disabledFields.includes(key);
         return (
           <TextField
             key={key}
@@ -76,6 +78,7 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
             fullWidth
             label={intl[key as keyof typeof intl]}
             required={required}
+            disabled={isDisabled}
             value={key === "expDate" ? toChineseDateString(data[key]) : String(data[key] ?? "")}
             error={Boolean(error)}
             helperText={error ?? (key === "expDate" ? intl.expDateHint : undefined)}

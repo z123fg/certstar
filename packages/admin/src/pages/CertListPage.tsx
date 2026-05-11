@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Card, CardContent, FormControlLabel, Switch, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CertTable from "../components/CertTable/CertTable";
 import { useAppContext } from "../App";
@@ -43,17 +44,25 @@ export default function CertListPage({ token }: Props) {
               <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => navigate("/batch")}>
                 批量添加
               </Button>
+              <Button variant="outlined" startIcon={<PictureAsPdfIcon />} onClick={() => navigate("/pdf-batch")}>
+                PDF 证书录入
+              </Button>
             </Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={complianceMode}
-                  onChange={(e) => setComplianceMode(e.target.checked)}
-                  color="warning"
-                />
-              }
-              label="完全合规模式"
-            />
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={complianceMode}
+                    onChange={(e) => setComplianceMode(e.target.checked)}
+                    color="warning"
+                  />
+                }
+                label="完全合规模式"
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 360, textAlign: "center" }}>
+                开启后，证书图片须由发证机构提供并通过 PDF 录入；禁止从画布生成或下载有章证书
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
       </Box>

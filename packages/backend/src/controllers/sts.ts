@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import oss from "../lib/oss";
 
 const ALLOWED_UPLOAD_PREFIXES = ["cert-image/", "profile-image/"];
-const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg"]);
+const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "application/pdf"]);
 
 export const getUploadUrl = (req: Request, res: Response) => {
   const { filename, mimeType } = req.body;
@@ -11,7 +11,7 @@ export const getUploadUrl = (req: Request, res: Response) => {
     return;
   }
   if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-    res.status(400).json({ message: "mimeType must be image/png or image/jpeg" });
+    res.status(400).json({ message: "mimeType must be image/png, image/jpeg, or application/pdf" });
     return;
   }
   const url = oss.signatureUrl(filename, {

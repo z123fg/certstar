@@ -59,11 +59,18 @@ export default function InquiryPage() {
         const controller = new AbortController();
         fetch(`${API_URL}/inquiry/${slug}`, { signal: controller.signal })
             .then(async (res) => {
-                // Check status before parsing body — a non-JSON error body would
-                // otherwise throw a SyntaxError and swallow the real status.
                 if (res.status === 410) throw new Error("证书已过期");
+                // Check ok before parsing — a non-JSON error body would throw
+                // SyntaxError and hide the real HTTP status.
+                if (!res.ok) {
+                    let msg = "查询失败";
+                    try {
+                        const errBody = await res.json();
+                        msg = errBody.message ?? msg;
+                    } catch (_) { /* non-JSON body — keep default message */ }
+                    throw new Error(msg);
+                }
                 const body = await res.json();
-                if (!res.ok) throw new Error(body.message ?? "查询失败");
                 setState({ status: "ok", cert: body.result as CertData });
             })
             .catch((err: Error) => {
@@ -106,10 +113,58 @@ export default function InquiryPage() {
     );
 }
 
+function CertImage({ url }: { url: string }) {
+    const isPdf = new URL(url).pathname.toLowerCase().endsWith(".pdf");
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    if (isPdf) {
+        return (
+            <Box sx={{ width: "100%", aspectRatio: "2481 / 3509" }}>
+                <Box
+                    component="iframe"
+                    src={url}
+                    title="证书文件"
+                    sx={{
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                        display: "block",
+                    }}
+                />
+            </Box>
+        );
+    }
+
+    return (
+        <Box sx={{ position: "relative", width: "100%", aspectRatio: "2481 / 3509" }}>
+            {!imageLoaded && (
+                <Skeleton
+                    variant="rectangular"
+                    animation="wave"
+                    sx={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                />
+            )}
+            <Box
+                component="img"
+                src={url}
+                alt="证书"
+                sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    display: "block",
+                    opacity: imageLoaded ? 1 : 0,
+                    transition: "opacity 0.3s",
+                }}
+                onLoad={() => setImageLoaded(true)}
+            />
+        </Box>
+    );
+}
+
 function CertCard({ cert }: { cert: CertData }) {
     const certTypeName =
         certTypeMap[cert.certType as CertTypeCode] ?? cert.certType;
-    const [imageLoaded, setImageLoaded] = useState(false);
 
     return (
         <Paper
@@ -131,42 +186,7 @@ function CertCard({ cert }: { cert: CertData }) {
                 }}
             />
 
-            {cert.certImageUrl && (
-                <Box
-                    sx={{
-                        position: "relative",
-                        width: "100%",
-                        aspectRatio: "2481 / 3509",
-                    }}
-                >
-                    {!imageLoaded && (
-                        <Skeleton
-                            variant="rectangular"
-                            animation="wave"
-                            sx={{
-                                position: "absolute",
-                                inset: 0,
-                                width: "100%",
-                                height: "100%",
-                            }}
-                        />
-                    )}
-                    <Box
-                        component="img"
-                        src={cert.certImageUrl}
-                        alt="证书"
-                        sx={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            display: "block",
-                            opacity: imageLoaded ? 1 : 0,
-                            transition: "opacity 0.3s",
-                        }}
-                        onLoad={() => setImageLoaded(true)}
-                    />
-                </Box>
-            )}
+            {cert.certImageUrl && <CertImage url={cert.certImageUrl} />}
 
             <Table
                 size="small"

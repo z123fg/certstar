@@ -45,24 +45,40 @@ export default function CertEditorPage() {
     const [profileImageDataUrl, setProfileImageDataUrl] = useState(() => formData.profileImageUrl ?? "");
     const [deleteOpen, setDeleteOpen] = useState(false);
 
+    // Hydrate form once certs load (handles direct URL access / page refresh)
+    useEffect(() => {
+        if (!id || formData.id) return;
+        const cert = certs.find((c) => c.id === id);
+        if (cert) {
+            setFormData(cert);
+            setProfileImageDataUrl(cert.profileImageUrl ?? "");
+        }
+    }, [certs]);
+
     useEffect(() => {
         showBackdrop(true);
         return () => showBackdrop(false);
     }, []);
+
+    // In compliance mode we show a PDF preview instead of canvas — dismiss backdrop once URL is available
+    useEffect(() => {
+        if (complianceMode && !isNew && formData.certImageUrl) {
+            showBackdrop(false);
+        }
+    }, [complianceMode, formData.certImageUrl]);
     const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(
         null,
     );
 
-    // Scroll canvas container to center once canvas has rendered
     const uploadCertImage = async (): Promise<string> => {
         if (!getCanvas()) throw new Error("Canvas is not ready");
-        const blob = await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
-        const filename = `cert-image/${formData.certNum}.png`;
-        const uploadUrl = await getUploadUrl(filename, "image/png");
+        const blob = await renderCertToBlob(formData, profileImageDataUrl, "stamped");
+        const filename = `cert-image/${formData.certNum}.pdf`;
+        const uploadUrl = await getUploadUrl(filename, "application/pdf");
         await fetch(uploadUrl, {
             method: "PUT",
             body: blob,
-            headers: { "Content-Type": "image/png" },
+            headers: { "Content-Type": "application/pdf" },
         });
         return `${import.meta.env.VITE_OSS_BASE_URL}/${filename}`;
     };
@@ -126,7 +142,7 @@ export default function CertEditorPage() {
             );
             triggerBlobDownload(
                 blob,
-                `${formData.certNum ?? "certificate"}.png`,
+                `${formData.certNum ?? "certificate"}.pdf`,
             );
         } catch {
             setAlert({ type: "error", message: "下载失败，请重试" });
@@ -212,6 +228,7 @@ export default function CertEditorPage() {
                         <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
+                            disabled={!isFormValid}
                             onClick={(e) => setDownloadAnchor(e.currentTarget)}
                         >
                             下载
@@ -221,9 +238,16 @@ export default function CertEditorPage() {
                             open={Boolean(downloadAnchor)}
                             onClose={() => setDownloadAnchor(null)}
                         >
-                            <MenuItem onClick={() => handleDownload("stamped")}>
-                                带章版
-                            </MenuItem>
+                            <Tooltip title={complianceMode ? "当前模式不允许下载有章证书" : ""} placement="left">
+                                <span>
+                                    <MenuItem
+                                        disabled={complianceMode}
+                                        onClick={() => handleDownload("stamped")}
+                                    >
+                                        带章版
+                                    </MenuItem>
+                                </span>
+                            </Tooltip>
                             <MenuItem
                                 onClick={() => handleDownload("stampless")}
                             >
@@ -243,17 +267,34 @@ export default function CertEditorPage() {
                     </Stack>
                 </Box>
 
-                {/* Canvas panel — shifted up 130px, top overflow hidden */}
-                <Box sx={{ overflow: "hidden" }}>
-                    <Box sx={{ mt: "-100px" }}>
-                        <CertCanvas
-                            cert={formData}
-                            profileImageDataUrl={profileImageDataUrl}
-                            onReady={() => showBackdrop(false)}
-                            onLoading={showBackdrop}
+                {/* Right panel: PDF preview in compliance mode, canvas otherwise */}
+                {complianceMode && !isNew ? (
+                    formData.certImageUrl ? (
+                        <Box
+                            component="iframe"
+                            src={formData.certImageUrl}
+                            sx={{
+                                flex: 1,
+                                height: "calc(100vh - 80px)",
+                                border: "1px solid",
+                                borderColor: "divider",
+                                borderRadius: 1,
+                                display: "block",
+                            }}
                         />
+                    ) : null /* backdrop stays open while certImageUrl loads */
+                ) : (
+                    <Box sx={{ overflow: "hidden" }}>
+                        <Box sx={{ mt: "-100px" }}>
+                            <CertCanvas
+                                cert={formData}
+                                profileImageDataUrl={profileImageDataUrl}
+                                onReady={() => showBackdrop(false)}
+                                onLoading={showBackdrop}
+                            />
+                        </Box>
                     </Box>
-                </Box>
+                )}
             </Box>
 
             <DeleteConfirmDialog

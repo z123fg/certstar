@@ -8,6 +8,10 @@ import { BatchProvider } from "./pages/Batch/BatchContext";
 import BatchUploadPage from "./pages/Batch/BatchUploadPage";
 import BatchPreviewPage from "./pages/Batch/BatchPreviewPage";
 import BatchDraftEditorPage from "./pages/Batch/BatchDraftEditorPage";
+import { PdfBatchProvider } from "./pages/PdfBatch/PdfBatchContext";
+import PdfBatchUploadPage from "./pages/PdfBatch/PdfBatchUploadPage";
+import PdfBatchPreviewPage from "./pages/PdfBatch/PdfBatchPreviewPage";
+import PdfBatchDraftEditorPage from "./pages/PdfBatch/PdfBatchDraftEditorPage";
 import LoginPage from "./pages/LoginPage";
 import { getAll } from "./services/cert";
 import { loadFonts } from "./utils/canvasUtils";
@@ -90,7 +94,13 @@ export default function App() {
           <Route path="/batch" element={<Navigate to="/batch/upload" replace />} />
           <Route path="/batch/upload" element={<BatchUploadPage token={token} />} />
           <Route path="/batch/preview" element={<BatchPreviewPage token={token} />} />
-          <Route path="/batch/draft/:index/edit" element={<BatchDraftEditorPage />} />
+          <Route path="/batch/draft/:localId/edit" element={<BatchDraftEditorPage />} />
+        </Route>
+        <Route element={<PdfBatchProvider />}>
+          <Route path="/pdf-batch" element={<Navigate to="/pdf-batch/upload" replace />} />
+          <Route path="/pdf-batch/upload" element={<PdfBatchUploadPage token={token} />} />
+          <Route path="/pdf-batch/preview" element={<PdfBatchPreviewPage token={token} />} />
+          <Route path="/pdf-batch/draft/:localId/edit" element={<PdfBatchDraftEditorPage />} />
         </Route>
       </Routes>
       <Snackbar

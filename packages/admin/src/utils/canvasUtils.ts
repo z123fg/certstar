@@ -1,4 +1,5 @@
 import { fabric } from "fabric";
+import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import type { Cert } from "../types";
 
@@ -181,7 +182,10 @@ export const loadTemplate = (
 
 // ─── Text fields ─────────────────────────────────────────────────────────────
 const getTextValue = (key: string, value: string) => {
-    if (key === "expDate") return new Date(value).getUTCFullYear().toString();
+    if (key === "expDate") {
+        const y = new Date(value).getUTCFullYear();
+        return isNaN(y) ? "" : y.toString();
+    }
     return value;
 };
 
@@ -360,6 +364,8 @@ export const getSnapshotLayout = (): Partial<Cert> => {
 };
 
 // ─── Export ───────────────────────────────────────────────────────────────────
+
+/** Export current canvas as a data URL at full print resolution (2481×3509). */
 export const exportCanvasAsDataUrl = (): string =>
     canvas?.toDataURL({
         format: "png",
@@ -367,8 +373,16 @@ export const exportCanvasAsDataUrl = (): string =>
         quality: 1,
     }) ?? "";
 
+/** Wrap a canvas PNG data URL into an A4 PDF Blob. */
+const canvasToPdfBlob = (dataUrl: string): Blob => {
+    // A4 in mm: 210 × 297
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.addImage(dataUrl, "PNG", 0, 0, 210, 297, undefined, "FAST");
+    return doc.output("blob");
+};
+
 /**
- * Render a cert to a PNG Blob using a hidden off-screen canvas.
+ * Render a cert to a PDF Blob using a hidden off-screen canvas.
  * Safe to call while the editor canvas is active — saves and restores the singleton.
  * The hidden <canvas id="download-canvas"> must exist in the DOM at call time.
  */
@@ -388,7 +402,7 @@ export const renderCertToBlob = async (
         if (profileDataUrl) await renderProfileImage(profileDataUrl, cert);
         if (cert.idNum && cert.certNum)
             await renderQRCode(cert.idNum, cert.certNum);
-        return await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
+        return canvasToPdfBlob(exportCanvasAsDataUrl());
     } finally {
         destroyCanvas();
         canvas = editorCanvas;

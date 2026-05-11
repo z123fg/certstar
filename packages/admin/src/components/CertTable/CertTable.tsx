@@ -4,7 +4,7 @@ import {
   Box, Button, Checkbox, Chip, Collapse, Dialog, DialogActions, DialogContent,
   DialogContentText, DialogTitle, FormControl, InputAdornment, InputLabel,
   Menu, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography,
+  TableContainer, TableHead, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -70,7 +70,7 @@ interface Props {
 }
 
 export default function CertTable({ certs, onBatchDelete }: Props) {
-  const { setAlert, refreshCerts } = useAppContext();
+  const { setAlert, refreshCerts, complianceMode } = useAppContext();
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -158,7 +158,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       for (const cert of selectedCerts) {
         const profileDataUrl = cert.profileImageUrl ?? "";
         const blob = await renderCertToBlob(cert, profileDataUrl, variant);
-        zip.file(`${cert.certNum}.png`, blob);
+        zip.file(`${cert.certNum}.pdf`, blob);
       }
       const zipBlob = await zip.generateAsync({ type: "blob" });
       triggerBlobDownload(zipBlob, `certificates-${variant}.zip`);
@@ -242,7 +242,11 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
               {downloading ? "打包中..." : "下载 ZIP"}
             </Button>
             <Menu anchorEl={downloadAnchor} open={Boolean(downloadAnchor)} onClose={() => setDownloadAnchor(null)}>
-              <MenuItem onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+              <Tooltip title={complianceMode ? "当前模式不允许下载有章证书" : ""} placement="left">
+                <span>
+                  <MenuItem disabled={complianceMode} onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+                </span>
+              </Tooltip>
               <MenuItem onClick={() => handleDownloadZip("stampless")}>无章版</MenuItem>
             </Menu>
           </>
