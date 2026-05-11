@@ -24,7 +24,6 @@ import type { Cert } from "../../types";
 import { createOne, deleteOne, updateOne } from "../../services/cert";
 import { getUploadUrl } from "../../services/sts";
 import {
-    exportCanvasAsDataUrl,
     getCanvas,
     getSnapshotLayout,
     renderCertToBlob,
