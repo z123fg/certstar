@@ -17,6 +17,7 @@ import type { Cert } from "../../types";
 import { OssUploadError, ossErrorMessage, dbErrorMessage, uploadObject } from "../../utils/ossUtils";
 import { validateCertDraft } from "../../utils/certValidation";
 import { usePdfBatchContext } from "./PdfBatchContext";
+import intl from "../../intl/intl";
 
 interface Props {
   token: string | null;
@@ -45,7 +46,7 @@ export default function PdfBatchPreviewPage({ token }: Props) {
   };
 
   if (!token) {
-    return <Typography color="text.secondary" sx={{ m: 4 }}>请先登录。</Typography>;
+    return <Typography color="text.secondary" sx={{ m: 4 }}>{intl.notLoggedIn}</Typography>;
   }
 
   if (rows.length === 0 && step === "preview") {
@@ -53,10 +54,10 @@ export default function PdfBatchPreviewPage({ token }: Props) {
       <Box sx={{ p: 3, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center", alignSelf: "flex-start" }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/pdf-batch/upload")} size="small">返回</Button>
-          <Typography variant="h6">PDF 证书录入</Typography>
+          <Typography variant="h6">{intl.pdfBatchTitle}</Typography>
         </Stack>
-        <Typography color="text.secondary">没有可预览的数据，请先上传 CSV 文件。</Typography>
-        <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate("/pdf-batch/upload")}>去上传</Button>
+        <Typography color="text.secondary">{intl.noPreviewData}</Typography>
+        <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate("/pdf-batch/upload")}>{intl.goUpload}</Button>
       </Box>
     );
   }
@@ -142,9 +143,9 @@ export default function PdfBatchPreviewPage({ token }: Props) {
           size="small"
           disabled={step === "processing"}
         >
-          返回上传
+          {intl.backToUpload}
         </Button>
-        <Typography variant="h6">PDF 证书录入</Typography>
+        <Typography variant="h6">{intl.pdfBatchTitle}</Typography>
       </Stack>
 
       {pageAlert && (
@@ -159,16 +160,16 @@ export default function PdfBatchPreviewPage({ token }: Props) {
             <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
               共 {rows.length} 条，{pdfMap.size} 个 PDF
             </Typography>
-            <Button variant="outlined" onClick={() => navigate("/pdf-batch/upload")}>重新选择文件</Button>
+            <Button variant="outlined" onClick={() => navigate("/pdf-batch/upload")}>{intl.reselectFiles}</Button>
             <Button variant="contained" startIcon={<UploadIcon />} disabled={rows.length === 0} onClick={handleSubmit}>
-              录入（{rows.length} 条）
+              {intl.pdfBatchTitle}（{rows.length} 条）
             </Button>
           </Stack>
           <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: "calc(100vh - 220px)" }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  {["姓名", "身份证号", "证书编号", "有效期至", "证书类型", "PDF", "操作"].map((h, i) => (
+                  {[intl.name, intl.idNum, intl.certNum, intl.expDate, intl.certType, "PDF", "操作"].map((h, i) => (
                     <TableCell key={i} sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -215,7 +216,7 @@ export default function PdfBatchPreviewPage({ token }: Props) {
           <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>
             {progress} / {rows.length} 完成
           </Typography>
-          <Button variant="outlined" color="error" onClick={handleCancel} sx={{ mt: 4 }}>取消</Button>
+          <Button variant="outlined" color="error" onClick={handleCancel} sx={{ mt: 4 }}>{intl.cancel}</Button>
         </Box>
       )}
 
@@ -224,8 +225,8 @@ export default function PdfBatchPreviewPage({ token }: Props) {
           <CheckCircleIcon color="success" sx={{ fontSize: 56 }} />
           <Typography variant="h6">成功录入 {successCount} 条证书</Typography>
           <Stack direction="row" spacing={1}>
-            <Button variant="contained" onClick={() => navigate("/")}>返回列表</Button>
-            <Button variant="outlined" onClick={() => { setRows([]); setPdfMap(new Map()); navigate("/pdf-batch/upload"); }}>继续录入</Button>
+            <Button variant="contained" onClick={() => navigate("/")}>{intl.backToList}</Button>
+            <Button variant="outlined" onClick={() => { setRows([]); setPdfMap(new Map()); navigate("/pdf-batch/upload"); }}>{intl.continueUpload}</Button>
           </Stack>
         </Box>
       )}

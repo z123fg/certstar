@@ -16,6 +16,7 @@ import LoginPage from "./pages/LoginPage";
 import { getAll } from "./services/cert";
 import { loadFonts } from "./utils/canvasUtils";
 import type { Cert } from "./types";
+import intl from "./intl/intl";
 
 interface AlertInfo {
   type: "success" | "error";
@@ -63,7 +64,7 @@ export default function App() {
     try {
       setCerts(await getAll());
     } catch {
-      setAlert({ type: "error", message: "获取证书列表失败" });
+      setAlert({ type: "error", message: intl.fetchError });
     } finally {
       setBackdropOpen(false);
     }
@@ -77,7 +78,7 @@ export default function App() {
     // On login: keep backdrop open until both certs and font are ready
     setBackdropOpen(true);
     Promise.all([
-      getAll().then(setCerts).catch(() => setAlert({ type: "error", message: "获取证书列表失败" })),
+      getAll().then(setCerts).catch(() => setAlert({ type: "error", message: intl.fetchError })),
       loadFonts().catch(() => {}),
     ]).finally(() => setBackdropOpen(false));
   }, [token]);

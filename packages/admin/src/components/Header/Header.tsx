@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Button } from "@mui/material";
 import { useAppContext } from "../../App";
+import intl from "../../intl/intl";
 
 interface Props {
   token: string | null;
@@ -22,9 +23,9 @@ export default function Header({ token }: Props) {
           CertStar
         </Typography>
         {token ? (
-          <Button color="inherit" onClick={logout}>登出</Button>
+          <Button color="inherit" onClick={logout}>{intl.logout}</Button>
         ) : (
-          <Button color="inherit" onClick={() => navigate("/login")}>登录</Button>
+          <Button color="inherit" onClick={() => navigate("/login")}>{intl.login}</Button>
         )}
       </Toolbar>
     </AppBar>

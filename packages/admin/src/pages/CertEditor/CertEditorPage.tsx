@@ -30,18 +30,25 @@ import {
     triggerBlobDownload,
 } from "../../utils/canvasUtils";
 import { isCertDraftValid } from "../../utils/certValidation";
+import intl from "../../intl/intl";
 
 export default function CertEditorPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { certs, refreshCerts, setAlert, showBackdrop, complianceMode } = useAppContext();
+    const { certs, refreshCerts, setAlert, showBackdrop, complianceMode } =
+        useAppContext();
     const isNew = !id;
-    const [formData, setFormData] = useState<Partial<Cert>>(() =>
-        (id ? certs.find((c) => c.id === id) : undefined) ?? { certType: "WTOP" }
+    const [formData, setFormData] = useState<Partial<Cert>>(
+        () =>
+            (id ? certs.find((c) => c.id === id) : undefined) ?? {
+                certType: "WTOP",
+            },
     );
 
     const isFormValid = isCertDraftValid(formData);
-    const [profileImageDataUrl, setProfileImageDataUrl] = useState(() => formData.profileImageUrl ?? "");
+    const [profileImageDataUrl, setProfileImageDataUrl] = useState(
+        () => formData.profileImageUrl ?? "",
+    );
     const [deleteOpen, setDeleteOpen] = useState(false);
 
     // Hydrate form once certs load (handles direct URL access / page refresh)
@@ -71,7 +78,11 @@ export default function CertEditorPage() {
 
     const uploadCertImage = async (): Promise<string> => {
         if (!getCanvas()) throw new Error("Canvas is not ready");
-        const blob = await renderCertToBlob(formData, profileImageDataUrl, "stamped");
+        const blob = await renderCertToBlob(
+            formData,
+            profileImageDataUrl,
+            "stamped",
+        );
         const filename = `cert-image/${formData.certNum}.pdf`;
         const uploadUrl = await getUploadUrl(filename, "application/pdf");
         await fetch(uploadUrl, {
@@ -120,11 +131,11 @@ export default function CertEditorPage() {
             await refreshCerts();
             setAlert({
                 type: "success",
-                message: isNew ? "证书创建成功！" : "证书更新成功！",
+                message: isNew ? intl.saveSuccess : intl.updateSuccess,
             });
             navigate("/");
         } catch {
-            setAlert({ type: "error", message: "保存失败，请重试" });
+            setAlert({ type: "error", message: intl.saveError });
         } finally {
             showBackdrop(false);
         }
@@ -144,7 +155,7 @@ export default function CertEditorPage() {
                 `${formData.certNum ?? "certificate"}.pdf`,
             );
         } catch {
-            setAlert({ type: "error", message: "下载失败，请重试" });
+            setAlert({ type: "error", message: intl.downloadError });
         } finally {
             showBackdrop(false);
         }
@@ -156,10 +167,10 @@ export default function CertEditorPage() {
         try {
             await deleteOne(id);
             await refreshCerts();
-            setAlert({ type: "success", message: "证书已删除" });
+            setAlert({ type: "success", message: intl.deleteSuccess });
             navigate("/");
         } catch {
-            setAlert({ type: "error", message: "删除失败，请重试" });
+            setAlert({ type: "error", message: intl.deleteError });
         } finally {
             showBackdrop(false);
             setDeleteOpen(false);
@@ -194,10 +205,10 @@ export default function CertEditorPage() {
                             onClick={() => navigate(-1)}
                             size="small"
                         >
-                            返回
+                            {intl.back}
                         </Button>
                         <Typography variant="h6">
-                            {isNew ? "添加证书" : "编辑证书"}
+                            {isNew ? intl.addOne : intl.editCert}
                         </Typography>
                     </Stack>
                     <CertForm
@@ -212,7 +223,9 @@ export default function CertEditorPage() {
                         spacing={1}
                         sx={{ flexWrap: "wrap" }}
                     >
-                        <Tooltip title={complianceMode ? "当前模式不允许上传有章证书" : ""}>
+                        <Tooltip
+                            title={complianceMode ? intl.complianceNoStampedSubmit : ""}
+                        >
                             <span>
                                 <Button
                                     variant="contained"
@@ -220,7 +233,7 @@ export default function CertEditorPage() {
                                     onClick={handleSubmit}
                                     disabled={!isFormValid || complianceMode}
                                 >
-                                    提交
+                                    {intl.submit}
                                 </Button>
                             </span>
                         </Tooltip>
@@ -230,27 +243,28 @@ export default function CertEditorPage() {
                             disabled={!isFormValid}
                             onClick={(e) => setDownloadAnchor(e.currentTarget)}
                         >
-                            下载
+                            {intl.download}
                         </Button>
                         <Menu
                             anchorEl={downloadAnchor}
                             open={Boolean(downloadAnchor)}
                             onClose={() => setDownloadAnchor(null)}
                         >
-                            <Tooltip title={complianceMode ? "当前模式不允许下载有章证书" : ""} placement="left">
+                            <Tooltip
+                                title={complianceMode ? intl.complianceNoStampedDownload : ""}
+                                placement="left"
+                            >
                                 <span>
                                     <MenuItem
                                         disabled={complianceMode}
                                         onClick={() => handleDownload("stamped")}
                                     >
-                                        带章版
+                                        {intl.stamped}
                                     </MenuItem>
                                 </span>
                             </Tooltip>
-                            <MenuItem
-                                onClick={() => handleDownload("stampless")}
-                            >
-                                无章版
+                            <MenuItem onClick={() => handleDownload("stampless")}>
+                                {intl.stampless}
                             </MenuItem>
                         </Menu>
                         {!isNew && (
@@ -260,7 +274,7 @@ export default function CertEditorPage() {
                                 startIcon={<DeleteIcon />}
                                 onClick={() => setDeleteOpen(true)}
                             >
-                                删除
+                                {intl.delete}
                             </Button>
                         )}
                     </Stack>

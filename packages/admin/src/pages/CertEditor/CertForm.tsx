@@ -41,7 +41,7 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
     if ((key === "idNum" || key === "certNum" || key === "expDate") && touched.has(key) && !val)
       return `${intl[key as keyof typeof intl]}不能为空`;
     if (key === "expDate" && val && !parseExpDate(data[key]))
-      return "格式不正确，支持 yyyy-mm-dd 或 yyyy/mm/dd";
+      return intl.expDateFormatError;
     return undefined;
   };
 
@@ -93,14 +93,14 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
         <input id="profile-image-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
         <label htmlFor="profile-image-input">
           <Button variant="outlined" size="small" component="span">
-            {profileImageDataUrl ? "更换证件照" : "上传证件照"}
+            {profileImageDataUrl ? intl.changePhoto : intl.uploadPhoto}
           </Button>
         </label>
         {profileImageDataUrl && (
           <Box
             component="img"
             src={profileImageDataUrl}
-            alt="证件照预览"
+            alt={intl.photoAlt}
             sx={{ display: "block", width: 80, height: 96, objectFit: "cover", borderRadius: 1, border: "1px solid", borderColor: "divider", mt: 1 }}
           />
         )}

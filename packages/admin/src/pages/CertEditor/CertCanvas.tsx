@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import type { Cert } from "../../types";
 import { useCertCanvas } from "./useCertCanvas";
+import intl from "../../intl/intl";
 
 interface Props {
     cert: Partial<Cert>;
@@ -34,7 +35,7 @@ export default function CertCanvas({ cert, profileImageDataUrl, onReady, onLoadi
                 color="text.secondary"
                 sx={{ mt: 1, display: "block" }}
             >
-                按住 Ctrl 可多选，拖动可调整文字位置
+                {intl.ctrlMultiSelect}
             </Typography>
         </Box>
     );

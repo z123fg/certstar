@@ -16,22 +16,23 @@ import { certTypeMap, toChineseDateString, toChineseDatetimeString } from "@cert
 import { useAppContext } from "../../App";
 import type { Cert } from "../../types";
 import { renderCertToBlob, triggerBlobDownload, type CertVariant } from "../../utils/canvasUtils";
+import intl from "../../intl/intl";
 
 const COLUMNS: { key: keyof Cert; label: string; date?: "date" | "datetime" }[] = [
-  { key: "name", label: "姓名" },
-  { key: "idNum", label: "身份证号" },
-  { key: "certNum", label: "证书编号" },
-  { key: "certType", label: "证书类型" },
-  { key: "expDate", label: "有效期", date: "date" },
-  { key: "organization", label: "工作单位" },
-  { key: "issuingAgency", label: "发证机构" },
+  { key: "name", label: intl.name },
+  { key: "idNum", label: intl.idNum },
+  { key: "certNum", label: intl.certNum },
+  { key: "certType", label: intl.certType },
+  { key: "expDate", label: intl.expDate, date: "date" },
+  { key: "organization", label: intl.organization },
+  { key: "issuingAgency", label: intl.issuingAgency },
   { key: "createdAt", label: "创建时间", date: "datetime" },
   { key: "updatedAt", label: "更新时间", date: "datetime" },
 ];
 
 // Config shared by both the filter panel and the active-chip builder
 const DATE_RANGE_FILTERS = [
-  { label: "有效期",  from: "expDateFrom"   as const, to: "expDateTo"   as const },
+  { label: intl.expDate,  from: "expDateFrom"   as const, to: "expDateTo"   as const },
   { label: "创建时间", from: "createdAtFrom" as const, to: "createdAtTo" as const },
   { label: "更新时间", from: "updatedAtFrom" as const, to: "updatedAtTo" as const },
 ];
@@ -163,20 +164,20 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       const zipBlob = await zip.generateAsync({ type: "blob" });
       triggerBlobDownload(zipBlob, `certificates-${variant}.zip`);
     } catch {
-      setAlert({ type: "error", message: "下载失败，请检查网络后重试" });
+      setAlert({ type: "error", message: intl.downloadError });
     } finally {
       setDownloading(false);
     }
   };
 
   if (certs.length === 0) {
-    return <Typography color="text.secondary" sx={{ textAlign: "center", mt: 6 }}>暂无证书数据</Typography>;
+    return <Typography color="text.secondary" sx={{ textAlign: "center", mt: 6 }}>{intl.noData}</Typography>;
   }
 
   // Build active chip descriptors for rendering
   const activeChips: { label: string; onDelete: () => void }[] = [
     ...filters.certType.map((code) => ({
-      label: `证书类型: ${certTypeLabel(code)}`,
+      label: `${intl.certType}: ${certTypeLabel(code)}`,
       onDelete: () => setFilter("certType", filters.certType.filter((c) => c !== code)),
     })),
     ...DATE_RANGE_FILTERS.flatMap(({ label, from, to }) =>
@@ -196,7 +197,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         <TextField
           size="small"
-          placeholder="搜索..."
+          placeholder={`${intl.search}...`}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           sx={{
@@ -210,7 +211,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
           }}
         />
         <Button size="medium" variant="outlined" startIcon={<RefreshIcon />} onClick={refreshCerts}>
-          刷新
+          {intl.refresh}
         </Button>
         <Button
           size="medium"
@@ -218,7 +219,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen((v) => !v)}
         >
-          筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          {intl.filter}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
         </Button>
         {selected.size > 0 && (
           <>
@@ -230,7 +231,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
               startIcon={<DeleteIcon />}
               onClick={() => setDeleteOpen(true)}
             >
-              删除
+              {intl.delete}
             </Button>
             <Button
               size="small"
@@ -239,15 +240,15 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
               onClick={(e) => setDownloadAnchor(e.currentTarget)}
               disabled={downloading}
             >
-              {downloading ? "打包中..." : "下载 ZIP"}
+              {downloading ? "打包中..." : intl.downloadZip}
             </Button>
             <Menu anchorEl={downloadAnchor} open={Boolean(downloadAnchor)} onClose={() => setDownloadAnchor(null)}>
-              <Tooltip title={complianceMode ? "当前模式不允许下载有章证书" : ""} placement="left">
+              <Tooltip title={complianceMode ? intl.complianceNoStampedDownload : ""} placement="left">
                 <span>
-                  <MenuItem disabled={complianceMode} onClick={() => handleDownloadZip("stamped")}>带章版</MenuItem>
+                  <MenuItem disabled={complianceMode} onClick={() => handleDownloadZip("stamped")}>{intl.stamped}</MenuItem>
                 </span>
               </Tooltip>
-              <MenuItem onClick={() => handleDownloadZip("stampless")}>无章版</MenuItem>
+              <MenuItem onClick={() => handleDownloadZip("stampless")}>{intl.stampless}</MenuItem>
             </Menu>
           </>
         )}
@@ -258,12 +259,12 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
             <FormControl size="small" sx={{ width: 200 }}>
-              <InputLabel>证书类型</InputLabel>
+              <InputLabel>{intl.certType}</InputLabel>
               <Select
                 multiple
                 value={filters.certType}
                 onChange={(e) => setFilter("certType", e.target.value as string[])}
-                input={<OutlinedInput label="证书类型" />}
+                input={<OutlinedInput label={intl.certType} />}
                 renderValue={(selected) =>
                   (selected as string[]).map(certTypeLabel).join(", ")
                 }
@@ -398,15 +399,15 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       </TableContainer>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <DialogTitle>确认删除</DialogTitle>
+        <DialogTitle>{intl.confirmDeleteTitle}</DialogTitle>
         <DialogContent>
           <DialogContentText>
             确定要删除选中的 {selected.size} 条证书吗？此操作不可撤销。
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)}>取消</Button>
-          <Button color="error" onClick={handleDelete}>删除</Button>
+          <Button onClick={() => setDeleteOpen(false)}>{intl.cancel}</Button>
+          <Button color="error" onClick={handleDelete}>{intl.delete}</Button>
         </DialogActions>
       </Dialog>
     </Box>

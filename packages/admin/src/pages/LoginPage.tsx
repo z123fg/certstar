@@ -9,6 +9,7 @@ import {
     Typography,
 } from "@mui/material";
 import { login } from "../services/auth";
+import intl from "../intl/intl";
 
 interface Props {
     token: string | null;
@@ -37,7 +38,7 @@ export default function LoginPage({ token, setToken }: Props) {
             setToken(t);
             navigate("/", { replace: true });
         } catch {
-            setError("用户名或密码错误");
+            setError(intl.loginError);
         }
     };
 
@@ -56,11 +57,11 @@ export default function LoginPage({ token, setToken }: Props) {
                 sx={{ p: 4, width: "100%", maxWidth: 360, marginTop: "50px" }}
             >
                 <Typography variant="h5" sx={{ mb: 3, textAlign: "center" }}>
-                    登录
+                    {intl.login}
                 </Typography>
                 {sessionExpired && (
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                        登录已过期，请重新登录
+                        {intl.sessionExpired}
                     </Alert>
                 )}
                 {error && (
@@ -70,14 +71,14 @@ export default function LoginPage({ token, setToken }: Props) {
                 )}
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <TextField
-                        label="用户名"
+                        label={intl.username}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         fullWidth
                         size="small"
                     />
                     <TextField
-                        label="密码"
+                        label={intl.password}
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -91,7 +92,7 @@ export default function LoginPage({ token, setToken }: Props) {
                         onClick={handleSubmit}
                         sx={{ mt: 1 }}
                     >
-                        登录
+                        {intl.login}
                     </Button>
                 </Box>
             </Paper>

@@ -7,6 +7,7 @@ import CertForm from "../CertEditor/CertForm";
 import type { Cert, CertDraft } from "../../types";
 import { isCertDraftValid } from "../../utils/certValidation";
 import { usePdfBatchContext } from "./PdfBatchContext";
+import intl from "../../intl/intl";
 
 export default function PdfBatchDraftEditorPage() {
   const { localId } = useParams();
@@ -34,8 +35,8 @@ export default function PdfBatchDraftEditorPage() {
   if (!draft) {
     return (
       <Box sx={{ p: 3 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/pdf-batch/preview")} size="small">返回</Button>
-        <Typography color="text.secondary" sx={{ mt: 3 }}>未找到这条草稿。</Typography>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/pdf-batch/preview")} size="small">{intl.back}</Button>
+        <Typography color="text.secondary" sx={{ mt: 3 }}>{intl.draftNotFound}</Typography>
       </Box>
     );
   }
@@ -61,9 +62,9 @@ export default function PdfBatchDraftEditorPage() {
       <Box sx={{ width: 320, flexShrink: 0 }}>
         <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/pdf-batch/preview")} size="small">
-            返回
+            {intl.back}
           </Button>
-          <Typography variant="h6">编辑草稿</Typography>
+          <Typography variant="h6">{intl.editDraft}</Typography>
         </Stack>
         <CertForm
           data={formData}
@@ -79,7 +80,7 @@ export default function PdfBatchDraftEditorPage() {
           onClick={handleSave}
           disabled={!isCertDraftValid(formData)}
         >
-          保存草稿
+          {intl.saveDraft}
         </Button>
       </Box>
 
@@ -111,7 +112,7 @@ export default function PdfBatchDraftEditorPage() {
               justifyContent: "center",
             }}
           >
-            <Typography color="text.disabled">未找到对应 PDF 文件</Typography>
+            <Typography color="text.disabled">{intl.noPdfFound}</Typography>
           </Box>
         )}
       </Box>

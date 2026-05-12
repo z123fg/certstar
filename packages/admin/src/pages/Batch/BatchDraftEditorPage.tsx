@@ -10,6 +10,7 @@ import { getSnapshotLayout } from "../../utils/canvasUtils";
 import { isCertDraftValid } from "../../utils/certValidation";
 import { useAppContext } from "../../App";
 import { useBatchContext } from "./BatchContext";
+import intl from "../../intl/intl";
 import { readFileAsDataUrl } from "./fileUtils";
 
 export default function BatchDraftEditorPage() {
@@ -48,8 +49,8 @@ export default function BatchDraftEditorPage() {
   if (!draft) {
     return (
       <Box sx={{ p: 3 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch/preview")} size="small">返回</Button>
-        <Typography color="text.secondary" sx={{ mt: 3 }}>未找到这条批量草稿。</Typography>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch/preview")} size="small">{intl.back}</Button>
+        <Typography color="text.secondary" sx={{ mt: 3 }}>{intl.batchDraftNotFound}</Typography>
       </Box>
     );
   }
@@ -92,9 +93,9 @@ export default function BatchDraftEditorPage() {
         <Box sx={{ width: 320, flexShrink: 0 }}>
           <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
             <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/batch/preview")} size="small">
-              返回
+              {intl.back}
             </Button>
-            <Typography variant="h6">编辑批量草稿</Typography>
+            <Typography variant="h6">{intl.batchEditDraft}</Typography>
           </Stack>
           <CertForm
             data={formData}
@@ -105,7 +106,7 @@ export default function BatchDraftEditorPage() {
           <Divider sx={{ my: 2 }} />
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
             <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={!isCertDraftValid(formData)}>
-              保存草稿
+              {intl.saveDraft}
             </Button>
           </Stack>
         </Box>

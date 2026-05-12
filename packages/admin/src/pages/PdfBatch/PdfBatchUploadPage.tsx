@@ -5,6 +5,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { parseCertCsv } from "../../utils/csvUtils";
 import { usePdfBatchContext } from "./PdfBatchContext";
+import intl from "../../intl/intl";
 
 interface Props {
   token: string | null;
@@ -19,7 +20,7 @@ export default function PdfBatchUploadPage({ token }: Props) {
   const [parseErrors, setParseErrors] = useState<string[]>([]);
 
   if (!token) {
-    return <Typography color="text.secondary" sx={{ m: 4 }}>请先登录。</Typography>;
+    return <Typography color="text.secondary" sx={{ m: 4 }}>{intl.notLoggedIn}</Typography>;
   }
 
   const handlePdfsChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -44,14 +45,14 @@ export default function PdfBatchUploadPage({ token }: Props) {
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center", alignSelf: "flex-start" }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/")} size="small">返回</Button>
-        <Typography variant="h6">PDF 证书录入</Typography>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/")} size="small">{intl.back}</Button>
+        <Typography variant="h6">{intl.pdfBatchTitle}</Typography>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 3, width: "100%", maxWidth: 720 }}>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>CSV 文件</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>{intl.csvFile}</Typography>
             <input
               id="csv-input"
               type="file"
@@ -61,17 +62,17 @@ export default function PdfBatchUploadPage({ token }: Props) {
             />
             <label htmlFor="csv-input">
               <Button variant="outlined" component="span" size="small" startIcon={<UploadFileIcon />}>
-                {csvFile ? csvFile.name : "选择文件"}
+                {csvFile ? csvFile.name : intl.selectFile}
               </Button>
             </label>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-              必须包含列：name, idNum, organization, certNum, expDate, issuingAgency, certType（中文名称，如：焊接热处理操作人员）
+              {intl.csvColumnsHint}
             </Typography>
           </Box>
 
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-              PDF 文件（文件名为证书编号，可多选）
+              {intl.pdfFilesHint}
             </Typography>
             <input
               id="pdfs-input"
@@ -96,11 +97,11 @@ export default function PdfBatchUploadPage({ token }: Props) {
 
           <Stack direction="row" spacing={1}>
             <Button variant="contained" disabled={!csvFile} onClick={handleParse}>
-              解析预览
+              {intl.parsePreview}
             </Button>
             {rows.length > 0 && (
               <Button variant="outlined" onClick={() => navigate("/pdf-batch/preview")}>
-                返回预览
+                {intl.backToPreview}
               </Button>
             )}
           </Stack>
