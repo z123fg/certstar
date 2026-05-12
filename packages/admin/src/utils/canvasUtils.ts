@@ -374,7 +374,7 @@ export const exportCanvasAsDataUrl = (): string =>
     }) ?? "";
 
 /** Wrap a canvas PNG data URL into an A4 PDF Blob. */
-const canvasToPdfBlob = (dataUrl: string): Blob => {
+export const canvasToPdfBlob = (dataUrl: string): Blob => {
     // A4 in mm: 210 × 297
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     doc.addImage(dataUrl, "PNG", 0, 0, 210, 297, undefined, "FAST");

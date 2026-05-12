@@ -15,7 +15,7 @@ import { useAppContext } from "../../App";
 import { createMany } from "../../services/cert";
 import type { Cert, CertDraft } from "../../types";
 import {
-  exportCanvasAsDataUrl, getSnapshotLayout, initCanvas, destroyCanvas,
+  canvasToPdfBlob, exportCanvasAsDataUrl, getSnapshotLayout, initCanvas, destroyCanvas,
   loadFonts, loadTemplate, renderProfileImage, renderQRCode, renderTextFields,
   triggerBlobDownload, type CertVariant,
 } from "../../utils/canvasUtils";
@@ -126,7 +126,7 @@ export default function BatchPreviewPage({ token }: Props) {
         renderTextFields({ ...draft, ...savedLayout } as Partial<Cert>);
         if (profileDataUrl) await renderProfileImage(profileDataUrl, savedLayout as Partial<Cert>);
         await renderQRCode(draft.idNum, draft.certNum);
-        const certBlob = await fetch(exportCanvasAsDataUrl()).then((r) => r.blob());
+        const certBlob = canvasToPdfBlob(exportCanvasAsDataUrl());
         rendered.push({ draft, certBlob, profileDataUrl, layout: savedLayout ?? getSnapshotLayout() });
       } catch (err) {
         if ((err as Error).name === "AbortError") break;
