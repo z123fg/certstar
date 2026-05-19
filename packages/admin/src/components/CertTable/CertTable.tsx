@@ -1,4 +1,5 @@
-import { useState, forwardRef } from "react";
+import { useState, useEffect, useRef, forwardRef, type MutableRefObject } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   Box, Button, Checkbox, Chip, Collapse, Dialog, DialogActions, DialogContent,
@@ -6,7 +7,7 @@ import {
   Menu, MenuItem, OutlinedInput, Paper, Select, Switch, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { TableVirtuoso, type TableComponents } from "react-virtuoso";
+import { TableVirtuoso, type TableComponents, type VirtuosoHandle } from "react-virtuoso";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -75,7 +76,7 @@ interface Props {
 }
 
 export default function CertTable({ certs, onBatchDelete }: Props) {
-  const { setAlert, refreshCerts, complianceMode, setComplianceMode } = useAppContext();
+  const { setAlert, refreshCerts, complianceMode, setComplianceMode, showBackdrop } = useAppContext();
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -87,6 +88,8 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const navigate = useNavigate();
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const scrollerRef = useRef<HTMLElement | null>(null);
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -132,21 +135,42 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
   const someFilteredSelected = filteredIds.some((id) => selected.has(id)) && !allFilteredSelected;
 
   const handleSelectAll = () => {
-    if (allFilteredSelected) {
-      setSelected(new Set());
-    } else {
-      setSelected((prev) => new Set([...prev, ...filteredIds]));
-    }
+    const top = scrollerRef.current?.scrollTop ?? 0;
+    flushSync(() => {
+      if (allFilteredSelected) {
+        setSelected(new Set());
+      } else {
+        setSelected((prev) => new Set([...prev, ...filteredIds]));
+      }
+    });
+    if (scrollerRef.current) scrollerRef.current.scrollTop = top;
   };
 
   const handleToggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    const top = scrollerRef.current?.scrollTop ?? 0;
+    flushSync(() => {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
     });
+    if (scrollerRef.current) scrollerRef.current.scrollTop = top;
   };
+
+  // Pending scroll-top to restore when the scroller element first mounts (-1 = none)
+  const pendingScrollTop = useRef<number>(-1);
+  if (pendingScrollTop.current === -1) {
+    const saved = sessionStorage.getItem("certListScrollTop");
+    if (saved) {
+      sessionStorage.removeItem("certListScrollTop");
+      pendingScrollTop.current = Number(saved);
+      showBackdrop(true);
+    } else {
+      pendingScrollTop.current = -2; // mark as checked
+    }
+  }
 
   const handleDelete = async () => {
     await onBatchDelete([...selected]);
@@ -355,12 +379,28 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
 
       {/* ── Table ── */}
       <TableVirtuoso
+        ref={virtuosoRef}
         data={filtered}
         style={{ flex: 1, minHeight: 0 }}
         increaseViewportBy={500}
         components={{
           Scroller: forwardRef((props, ref) => (
-            <TableContainer component={Paper} variant="outlined" {...props} ref={ref} sx={{ overflowX: "auto" }} />
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              {...props}
+              ref={(el: HTMLElement | null) => {
+                scrollerRef.current = el;
+                if (typeof ref === "function") ref(el);
+                else if (ref) (ref as MutableRefObject<HTMLElement | null>).current = el;
+                if (el && pendingScrollTop.current >= 0) {
+                  el.scrollTop = pendingScrollTop.current;
+                  pendingScrollTop.current = -2;
+                  showBackdrop(false);
+                }
+              }}
+              sx={{ overflowX: "auto" }}
+            />
           )),
           Table: (props) => <Table size="small" {...props} sx={{ minWidth: 1200 }} />,
           TableHead: forwardRef((props, ref) => <TableHead {...props} ref={ref} />),
@@ -431,7 +471,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             <TableCell>
               <Button
                 size="small"
-                onClick={(e) => { e.stopPropagation(); navigate(`/certs/${cert.id}/edit`); }}
+                onClick={(e) => { e.stopPropagation(); sessionStorage.setItem("certListScrollTop", String(scrollerRef.current?.scrollTop ?? 0)); navigate(`/certs/${cert.id}/edit`); }}
               >
                 编辑
               </Button>
