@@ -7,6 +7,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<SearchPage />} />
       <Route path="/:slug" element={<InquiryPage />} />
+      <Route path="/cert/:slug" element={<InquiryPage />} />
       <Route path="*" element={<SearchPage />} />
     </Routes>
   )
