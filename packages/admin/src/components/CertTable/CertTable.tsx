@@ -89,7 +89,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
   const [filterOpen, setFilterOpen] = useState(false);
   const navigate = useNavigate();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const scrollerRef = useRef<HTMLElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -389,10 +389,10 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
               component={Paper}
               variant="outlined"
               {...props}
-              ref={(el: HTMLElement | null) => {
+              ref={(el: HTMLDivElement | null) => {
                 scrollerRef.current = el;
                 if (typeof ref === "function") ref(el);
-                else if (ref) (ref as MutableRefObject<HTMLElement | null>).current = el;
+                else if (ref) (ref as MutableRefObject<HTMLDivElement | null>).current = el;
                 if (el && pendingScrollTop.current >= 0) {
                   el.scrollTop = pendingScrollTop.current;
                   pendingScrollTop.current = -2;
