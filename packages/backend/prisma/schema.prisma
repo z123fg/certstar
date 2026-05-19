@@ -9,7 +9,7 @@ datasource db {
 
 model Cert {
   id              String   @id @default(cuid())
-  idNum           String   @unique
+  idNum           String
   certNum         String   @unique
   name            String
   organization    String

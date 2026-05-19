@@ -16,11 +16,8 @@ import { useAppContext } from "../App";
 import { deleteMany } from "../services/cert";
 import intl from "../intl/intl";
 
-interface Props {
-    token: string | null;
-}
 
-export default function CertListPage({ token }: Props) {
+export default function CertListPage() {
     const navigate = useNavigate();
     const {
         certs,
@@ -30,14 +27,6 @@ export default function CertListPage({ token }: Props) {
         complianceMode,
         setComplianceMode,
     } = useAppContext();
-
-    if (!token) {
-        return (
-            <Typography color="text.secondary" sx={{ m: 4 }}>
-                {intl.notLoggedIn}
-            </Typography>
-        );
-    }
 
     const handleBatchDelete = async (ids: string[]) => {
         showBackdrop(true);

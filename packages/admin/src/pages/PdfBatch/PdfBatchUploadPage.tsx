@@ -7,11 +7,8 @@ import { parseCertCsv } from "../../utils/csvUtils";
 import { usePdfBatchContext } from "./PdfBatchContext";
 import intl from "../../intl/intl";
 
-interface Props {
-  token: string | null;
-}
 
-export default function PdfBatchUploadPage({ token }: Props) {
+export default function PdfBatchUploadPage() {
   const navigate = useNavigate();
   const { rows, setRows, setPdfMap } = usePdfBatchContext();
 
@@ -19,9 +16,6 @@ export default function PdfBatchUploadPage({ token }: Props) {
   const [pdfCount, setPdfCount] = useState(0);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
 
-  if (!token) {
-    return <Typography color="text.secondary" sx={{ m: 4 }}>{intl.notLoggedIn}</Typography>;
-  }
 
   const handlePdfsChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

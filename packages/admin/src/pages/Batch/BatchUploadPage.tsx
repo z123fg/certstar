@@ -7,11 +7,8 @@ import { parseCertCsv } from "../../utils/csvUtils";
 import { useBatchContext } from "./BatchContext";
 import intl from "../../intl/intl";
 
-interface Props {
-    token: string | null;
-}
 
-export default function BatchUploadPage({ token }: Props) {
+export default function BatchUploadPage() {
     const navigate = useNavigate();
     const {
         rows,
@@ -24,14 +21,6 @@ export default function BatchUploadPage({ token }: Props) {
 
     const [csvFile, setCsvFile] = useState<File | null>(null);
     const [parseErrors, setParseErrors] = useState<string[]>([]);
-
-    if (!token) {
-        return (
-            <Typography color="text.secondary" sx={{ m: 4 }}>
-                {intl.notLoggedIn}
-            </Typography>
-        );
-    }
 
     const handleImagesChange = (e: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files ?? []);

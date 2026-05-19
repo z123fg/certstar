@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import {
+    Navigate,
+    useSearchParams,
+    useLocation,
+} from "react-router-dom";
 import {
     Box,
     Button,
@@ -17,14 +21,15 @@ interface Props {
 }
 
 export default function LoginPage({ token, setToken }: Props) {
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const nextPath = (location.state as { next?: string } | null)?.next ?? "/";
     const sessionExpired = searchParams.get("reason") === "session_expired";
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
-    if (token) return <Navigate to="/" replace />;
+    if (token) return <Navigate to={nextPath} replace />;
 
     const handleSubmit = async () => {
         setError("");
@@ -36,7 +41,6 @@ export default function LoginPage({ token, setToken }: Props) {
                 String(Date.now() + expiresIn * 1000),
             );
             setToken(t);
-            navigate("/", { replace: true });
         } catch {
             setError(intl.loginError);
         }

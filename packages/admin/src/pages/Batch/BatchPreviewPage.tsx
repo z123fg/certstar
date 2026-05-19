@@ -55,10 +55,6 @@ import { useBatchContext } from "./BatchContext";
 import { readFileAsDataUrl } from "./fileUtils";
 import intl from "../../intl/intl";
 
-interface Props {
-    token: string | null;
-}
-
 interface PageAlert {
     type: "success" | "error";
     message: string;
@@ -73,7 +69,7 @@ type Rendered = {
     layout: Partial<Cert>;
 };
 
-export default function BatchPreviewPage({ token }: Props) {
+export default function BatchPreviewPage() {
     const navigate = useNavigate();
     const { refreshCerts, complianceMode } = useAppContext();
     const { rows, setRows, rowLayouts, profileDataUrlOverrides, imageMap } =
@@ -104,13 +100,6 @@ export default function BatchPreviewPage({ token }: Props) {
         setStep("preview");
     };
 
-    if (!token) {
-        return (
-            <Typography color="text.secondary" sx={{ m: 4 }}>
-                {intl.notLoggedIn}
-            </Typography>
-        );
-    }
 
     // Guard: nothing to preview yet
     if (rows.length === 0 && step === "preview") {

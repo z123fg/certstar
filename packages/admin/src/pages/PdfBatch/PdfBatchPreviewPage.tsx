@@ -19,13 +19,9 @@ import { validateCertDraft } from "../../utils/certValidation";
 import { usePdfBatchContext } from "./PdfBatchContext";
 import intl from "../../intl/intl";
 
-interface Props {
-  token: string | null;
-}
-
 type Step = "preview" | "processing" | "done";
 
-export default function PdfBatchPreviewPage({ token }: Props) {
+export default function PdfBatchPreviewPage() {
   const navigate = useNavigate();
   const { refreshCerts } = useAppContext();
   const { rows, setRows, pdfMap, setPdfMap } = usePdfBatchContext();
@@ -44,10 +40,6 @@ export default function PdfBatchPreviewPage({ token }: Props) {
     abortRef.current = null;
     setStep("preview");
   };
-
-  if (!token) {
-    return <Typography color="text.secondary" sx={{ m: 4 }}>{intl.notLoggedIn}</Typography>;
-  }
 
   if (rows.length === 0 && step === "preview") {
     return (
