@@ -84,10 +84,18 @@ export default function SearchPage() {
     }, []);
 
     return (
-        <PageLayout maxWidth={480}>
+        <PageLayout maxWidth={480} py={0}>
             <Paper
                 elevation={2}
-                sx={{ borderRadius: 3, p: "28px 24px", marginTop: "50px" }}
+                sx={{
+                    borderRadius: 3,
+                    p: "52px 32px",
+                    position: "absolute",
+                    top: "33%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "calc(100% - 20px)",
+                }}
             >
                 <Typography
                     variant="subtitle1"
