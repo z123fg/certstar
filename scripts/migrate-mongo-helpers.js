@@ -35,10 +35,17 @@ export function parseExpDate(raw) {
     if (!raw) return null;
     const normalised = raw.replace(/\//g, "-");
     const d = new Date(normalised);
-    return isNaN(d.getTime()) ? null : d;
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    if (year < 1900 || year > 2100) return null;
+    return d;
 }
 
-const OLD_CERT_URL_PREFIX = "https://www.cert-inquiry.cn/cert/";
+const OLD_CERT_URL_PREFIXES = [
+    "https://www.cert-inquiry.cn/cert/",
+    "https://www.cert-inquiry.com/cert/",
+    "https://cert-inquiry.cn/",
+];
 const OSS_CERT_IMAGE_PREFIX = "https://qrcode-portal.oss-cn-hangzhou.aliyuncs.com/cert-image/";
 
 /**
@@ -49,12 +56,13 @@ const OSS_CERT_IMAGE_PREFIX = "https://qrcode-portal.oss-cn-hangzhou.aliyuncs.co
 export function extractCertImageUrl(certImageField) {
     const content = certImageField?.content?.trim();
     if (!content) return null;
-    if (content.startsWith(OLD_CERT_URL_PREFIX)) {
-        const slug = content.slice(OLD_CERT_URL_PREFIX.length);
+    const oldPrefix = OLD_CERT_URL_PREFIXES.find((p) => content.startsWith(p));
+    if (oldPrefix) {
+        const slug = content.slice(oldPrefix.length);
         return slug ? `${OSS_CERT_IMAGE_PREFIX}${slug}.png` : null;
     }
-    // Already an OSS URL — use as-is
-    if (content.startsWith("https://")) return content;
+    // Already a direct OSS URL — use as-is
+    if (content.startsWith(OSS_CERT_IMAGE_PREFIX)) return content;
     return null;
 }
 
@@ -82,10 +90,6 @@ export function mapDoc(doc) {
     if (!certType) warnings.push("missing certType");
     if (!issuingAgency) warnings.push("missing issuingAgency");
     if (!expDate) warnings.push(`unparseable expDate: "${expDateRaw}"`);
-
-    if (profileImageUrl?.includes("profile-photo/")) {
-        warnings.push(`profileImageUrl uses old prefix "profile-photo/" — backend proxy validation may reject it`);
-    }
 
     const namePos = position(doc.name);
     const idNumPos = position(doc.idNum);

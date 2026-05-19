@@ -280,21 +280,38 @@ export default function CertEditorPage() {
                     </Stack>
                 </Box>
 
-                {/* Right panel: PDF preview in compliance mode, canvas otherwise */}
+                {/* Right panel: PDF/image preview in compliance mode, canvas otherwise */}
                 {complianceMode && !isNew ? (
                     formData.certImageUrl ? (
-                        <Box
-                            component="iframe"
-                            src={formData.certImageUrl}
-                            sx={{
-                                flex: 1,
-                                height: "calc(100vh - 80px)",
-                                border: "1px solid",
-                                borderColor: "divider",
-                                borderRadius: 1,
-                                display: "block",
-                            }}
-                        />
+                        /\.(png|jpe?g)$/i.test(formData.certImageUrl) ? (
+                            <Box
+                                component="img"
+                                src={formData.certImageUrl}
+                                alt="证书"
+                                sx={{
+                                    flex: 1,
+                                    height: "calc(100vh - 80px)",
+                                    objectFit: "contain",
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                    borderRadius: 1,
+                                    display: "block",
+                                }}
+                            />
+                        ) : (
+                            <Box
+                                component="iframe"
+                                src={formData.certImageUrl}
+                                sx={{
+                                    flex: 1,
+                                    height: "calc(100vh - 80px)",
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                    borderRadius: 1,
+                                    display: "block",
+                                }}
+                            />
+                        )
                     ) : null /* backdrop stays open while certImageUrl loads */
                 ) : (
                     <Box sx={{ overflow: "hidden" }}>

@@ -3,11 +3,12 @@
  * Migrate cert data from MongoDB NDJSON export to PostgreSQL via Prisma.
  *
  * Usage:
- *   node scripts/migrate-mongo.js --file /tmp/certs.json [--dry-run]
+ *   node scripts/migrate-mongo.js --file /tmp/certs.json [--dry-run] [--output /tmp/out.json]
  *
  * Options:
- *   --file <path>   Path to the mongoexport NDJSON file (required)
- *   --dry-run       Parse and validate without writing to the database
+ *   --file <path>     Path to the mongoexport NDJSON file (required)
+ *   --dry-run         Parse and validate without writing to the database
+ *   --output <path>   Write the mapped records to a JSON file (implies --dry-run)
  */
 
 import fs from "fs";
@@ -20,10 +21,12 @@ import { mapDoc } from "./migrate-mongo-helpers.js";
 
 const args = process.argv.slice(2);
 const fileIndex = args.indexOf("--file");
-const dryRun = args.includes("--dry-run");
+const outputIndex = args.indexOf("--output");
+const outputPath = outputIndex !== -1 ? path.resolve(args[outputIndex + 1]) : null;
+const dryRun = args.includes("--dry-run") || outputPath !== null;
 
 if (fileIndex === -1 || !args[fileIndex + 1]) {
-    console.error("Usage: node scripts/migrate-mongo.js --file <path> [--dry-run]");
+    console.error("Usage: node scripts/migrate-mongo.js --file <path> [--dry-run] [--output <path>]");
     process.exit(1);
 }
 
@@ -49,6 +52,7 @@ async function main() {
     let failed = 0;
     const allWarnings = [];
     const errors = [];
+    const outputRecords = [];
 
     for await (const line of rl) {
         const trimmed = line.trim();
@@ -92,6 +96,7 @@ async function main() {
             }
         } else {
             inserted++;
+            if (outputPath) outputRecords.push(data);
         }
 
         if (total % 50 === 0) process.stdout.write(`  processed ${total}...\r`);
@@ -120,6 +125,11 @@ async function main() {
         for (const { certNum, error } of errors) {
             console.log(`  [${certNum}] ${error}`);
         }
+    }
+
+    if (outputPath) {
+        fs.writeFileSync(outputPath, JSON.stringify(outputRecords, null, 2));
+        console.log(`\n📄 Output written to: ${outputPath} (${outputRecords.length} records)`);
     }
 
     console.log(`\n${"─".repeat(50)}`);
