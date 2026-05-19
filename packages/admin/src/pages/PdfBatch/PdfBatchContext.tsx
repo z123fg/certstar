@@ -12,6 +12,7 @@ interface PdfBatchContextValue {
 
 const PdfBatchContext = createContext<PdfBatchContextValue>({} as PdfBatchContextValue);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePdfBatchContext = () => useContext(PdfBatchContext);
 
 export function PdfBatchProvider() {

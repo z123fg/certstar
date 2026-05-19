@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef } from "react";
+import { useState, useEffect, useRef, forwardRef } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -264,18 +264,18 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
         if (scrollerRef.current) scrollerRef.current.scrollTop = top;
     };
 
-    // Pending scroll-top to restore when the scroller element first mounts (-1 = none)
-    const pendingScrollTop = useRef<number>(-1);
-    if (pendingScrollTop.current === -1) {
+    // Read pending scroll position once on mount via lazy useState (safe — no render-time ref access)
+    const [initialScrollTop] = useState<number>(() => {
         const saved = sessionStorage.getItem("certListScrollTop");
-        if (saved) {
-            sessionStorage.removeItem("certListScrollTop");
-            pendingScrollTop.current = Number(saved);
-            showBackdrop(true);
-        } else {
-            pendingScrollTop.current = -2; // mark as checked
-        }
-    }
+        if (!saved) return -1;
+        sessionStorage.removeItem("certListScrollTop");
+        return Number(saved);
+    });
+    const pendingScrollTop = useRef<number>(initialScrollTop);
+
+    useEffect(() => {
+        if (initialScrollTop >= 0) showBackdrop(true);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleDelete = async () => {
         await onBatchDelete([...selected]);

@@ -89,7 +89,8 @@ export default function PdfBatchPreviewPage() {
     try {
       setProcessingMsg(`正在上传 PDF 0 / ${rows.length}...`);
       await Promise.all(
-        rows.map(async ({ _localId: _, ...draft }, i) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        rows.map(async ({ _localId, ...draft }, i) => {
           const pdfFile = pdfMap.get(draft.certNum)!;
           const filename = `cert-image/${draft.certNum}.pdf`;
           await uploadObject(filename, "application/pdf", pdfFile, signal);

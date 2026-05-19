@@ -33,7 +33,9 @@ interface AppContextValue {
     setComplianceMode: (v: boolean) => void;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const AppContext = createContext<AppContextValue>({} as AppContextValue);
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => useContext(AppContext);
 
 /** Redirects unauthenticated users to /login and shows an alert. */
@@ -89,6 +91,7 @@ export default function App() {
             return;
         }
         // On login: keep backdrop open until both certs and font are ready
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setBackdropOpen(true);
         Promise.all([
             getAll()

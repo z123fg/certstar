@@ -15,6 +15,8 @@
     "admin:preview": "npm run preview -w admin",
     "admin:lint": "npm run lint -w admin",
     "admin:typecheck": "npm run typecheck -w admin",
+    "admin:check": "npm run typecheck -w admin && npm run lint -w admin",
+    "check": "npm run typecheck -w packages/shared && npm run typecheck -w packages/backend && npm run typecheck -w packages/admin && npm run lint -w admin && npm run typecheck -w packages/cert-inquiry",
     "inquiry:dev": "npm run dev -w @certstar/cert-inquiry",
     "inquiry:build": "npm run build -w @certstar/cert-inquiry",
     "inquiry:preview": "npm run preview -w @certstar/cert-inquiry",
