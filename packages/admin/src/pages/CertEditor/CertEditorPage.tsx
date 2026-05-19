@@ -56,6 +56,7 @@ export default function CertEditorPage() {
         if (!id || formData.id) return;
         const cert = certs.find((c) => c.id === id);
         if (cert) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData(cert);
             setProfileImageDataUrl(cert.profileImageUrl ?? "");
         }

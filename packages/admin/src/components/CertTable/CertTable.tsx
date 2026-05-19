@@ -1,134 +1,18 @@
-import { useState, useRef, forwardRef, type MutableRefObject } from "react";
-import { flushSync } from "react-dom";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    Box,
-    Button,
-    Checkbox,
-    Chip,
-    Collapse,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
-    Divider,
-    FormControl,
-    InputAdornment,
-    InputLabel,
-    Menu,
-    MenuItem,
-    OutlinedInput,
-    Paper,
-    Select,
-    Switch,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TableSortLabel,
-    TextField,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import {
-    TableVirtuoso,
-    type TableComponents,
-    type VirtuosoHandle,
-} from "react-virtuoso";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DownloadIcon from "@mui/icons-material/Download";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import SearchIcon from "@mui/icons-material/Search";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import JSZip from "jszip";
-import {
-    certTypeMap,
-    toChineseDateString,
-    toChineseDatetimeString,
-} from "@certstar/shared";
+import { Box, Typography } from "@mui/material";
+import type { VirtuosoHandle } from "react-virtuoso";
 import { useAppContext } from "../../App";
 import type { Cert } from "../../types";
-import {
-    renderCertToBlob,
-    triggerBlobDownload,
-    type CertVariant,
-} from "../../utils/canvasUtils";
+import { useScrollRestore } from "./hooks/useScrollRestore";
+import { useSelection } from "./hooks/useSelection";
+import { useCertFilter } from "./hooks/useCertFilter";
+import { useZipDownload } from "./hooks/useZipDownload";
+import CertToolbar from "./components/CertToolbar";
+import CertFilterPanel from "./components/CertFilterPanel";
+import CertVirtuosoTable from "./components/CertVirtuosoTable";
+import CertDialogs from "./components/CertDialogs";
 import intl from "../../intl/intl";
-
-const COLUMNS: {
-    key: keyof Cert;
-    label: string;
-    date?: "date" | "datetime";
-    clip?: number;
-}[] = [
-    { key: "name", label: intl.name },
-    { key: "idNum", label: intl.idNum },
-    { key: "certNum", label: intl.certNum },
-    { key: "certType", label: intl.certType },
-    { key: "expDate", label: intl.expDate, date: "date" },
-    { key: "organization", label: intl.organization, clip: 160 },
-    { key: "issuingAgency", label: intl.issuingAgency, clip: 160 },
-    { key: "createdAt", label: "创建时间", date: "datetime" },
-    { key: "updatedAt", label: "更新时间", date: "datetime" },
-];
-
-// Config shared by both the filter panel and the active-chip builder
-const DATE_RANGE_FILTERS = [
-    {
-        label: intl.expDate,
-        from: "expDateFrom" as const,
-        to: "expDateTo" as const,
-    },
-    {
-        label: "创建时间",
-        from: "createdAtFrom" as const,
-        to: "createdAtTo" as const,
-    },
-    {
-        label: "更新时间",
-        from: "updatedAtFrom" as const,
-        to: "updatedAtTo" as const,
-    },
-];
-
-const CERT_TYPE_ENTRIES = Object.entries(certTypeMap) as [string, string][];
-
-/** Resolve a certType code to its display label, falling back to the code itself. */
-const certTypeLabel = (code: string): string =>
-    certTypeMap[code as keyof typeof certTypeMap] ?? code;
-
-const formatDate = (value: unknown, type: "date" | "datetime"): string =>
-    type === "date"
-        ? toChineseDateString(value)
-        : toChineseDatetimeString(value);
-
-type SortDir = "asc" | "desc";
-
-interface Filters {
-    certType: string[]; // selected CertTypeCodes; empty = all
-    expDateFrom: string; // "YYYY-MM-DD" or ""
-    expDateTo: string;
-    createdAtFrom: string;
-    createdAtTo: string;
-    updatedAtFrom: string;
-    updatedAtTo: string;
-}
-
-const EMPTY_FILTERS: Filters = {
-    certType: [],
-    expDateFrom: "",
-    expDateTo: "",
-    createdAtFrom: "",
-    createdAtTo: "",
-    updatedAtFrom: "",
-    updatedAtTo: "",
-};
 
 interface Props {
     certs: Cert[];
@@ -136,176 +20,66 @@ interface Props {
 }
 
 export default function CertTable({ certs, onBatchDelete }: Props) {
-    const {
-        setAlert,
-        refreshCerts,
-        complianceMode,
-        setComplianceMode,
-        showBackdrop,
-    } = useAppContext();
-    const [keyword, setKeyword] = useState("");
-    const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
-    const [sortDir, setSortDir] = useState<SortDir>("desc");
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const [complianceConfirmOpen, setComplianceConfirmOpen] = useState(false);
-    const [downloading, setDownloading] = useState(false);
-    const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(
-        null,
-    );
-    const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-    const [filterOpen, setFilterOpen] = useState(false);
+    const { setAlert, refreshCerts, complianceMode, setComplianceMode } =
+        useAppContext();
     const navigate = useNavigate();
     const virtuosoRef = useRef<VirtuosoHandle>(null);
     const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-    const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
-        setFilters((prev) => ({ ...prev, [key]: value }));
+    // ── Scroll restoration (across editor navigation) ──
+    const { initialState, saveState } = useScrollRestore();
 
-    const handleSort = (key: keyof Cert) => {
-        if (key === sortKey) {
-            setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        } else {
-            setSortKey(key);
-            setSortDir("asc");
-        }
-    };
+    // ── Row selection (with scroll-position preservation on each toggle) ──
+    const { selected, handleToggle, handleSelectAll, clearSelection } =
+        useSelection(scrollerRef);
 
-    const filtered = certs
-        .filter(
-            (c) =>
-                !keyword ||
-                [
-                    c.name,
-                    c.idNum,
-                    c.certNum,
-                    c.organization,
-                    c.issuingAgency,
-                ].some((v) => v?.toLowerCase().includes(keyword.toLowerCase())),
-        )
-        .filter(
-            (c) =>
-                filters.certType.length === 0 ||
-                filters.certType.includes(c.certType),
-        )
-        .filter(
-            (c) =>
-                !filters.expDateFrom ||
-                toChineseDateString(c.expDate) >= filters.expDateFrom,
-        )
-        .filter(
-            (c) =>
-                !filters.expDateTo ||
-                toChineseDateString(c.expDate) <= filters.expDateTo,
-        )
-        .filter(
-            (c) =>
-                !filters.createdAtFrom ||
-                toChineseDateString(c.createdAt) >= filters.createdAtFrom,
-        )
-        .filter(
-            (c) =>
-                !filters.createdAtTo ||
-                toChineseDateString(c.createdAt) <= filters.createdAtTo,
-        )
-        .filter(
-            (c) =>
-                !filters.updatedAtFrom ||
-                toChineseDateString(c.updatedAt) >= filters.updatedAtFrom,
-        )
-        .filter(
-            (c) =>
-                !filters.updatedAtTo ||
-                toChineseDateString(c.updatedAt) <= filters.updatedAtTo,
-        )
-        .sort((a, b) => {
-            const av = String(a[sortKey] ?? "");
-            const bv = String(b[sortKey] ?? "");
-            return sortDir === "asc"
-                ? av.localeCompare(bv)
-                : bv.localeCompare(av);
-        });
+    // ── Filtering & sorting ──
+    const {
+        keyword,
+        setKeyword,
+        sortKey,
+        sortDir,
+        handleSort,
+        filters,
+        setFilters,
+        setFilter,
+        filtered,
+        activeFilterCount,
+        activeChips,
+    } = useCertFilter(certs);
 
-    // Count active column filters (certType counts as one even when multiple selected)
-    const activeFilterCount =
-        (filters.certType.length > 0 ? 1 : 0) +
-        (filters.expDateFrom || filters.expDateTo ? 1 : 0) +
-        (filters.createdAtFrom || filters.createdAtTo ? 1 : 0) +
-        (filters.updatedAtFrom || filters.updatedAtTo ? 1 : 0);
+    // ── ZIP download ──
+    const {
+        downloading,
+        downloadAnchor,
+        setDownloadAnchor,
+        handleDownloadZip,
+    } = useZipDownload(certs, selected, setAlert);
 
+    // ── Dialog open/close state ──
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [complianceConfirmOpen, setComplianceConfirmOpen] = useState(false);
+
+    // ── Derived selection state (needed by both toolbar and table) ──
     const filteredIds = filtered.map((c) => c.id);
     const allFilteredSelected =
         filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
     const someFilteredSelected =
         filteredIds.some((id) => selected.has(id)) && !allFilteredSelected;
 
-    const handleSelectAll = () => {
-        const top = scrollerRef.current?.scrollTop ?? 0;
-        flushSync(() => {
-            if (allFilteredSelected) {
-                setSelected(new Set());
-            } else {
-                setSelected((prev) => new Set([...prev, ...filteredIds]));
-            }
-        });
-        if (scrollerRef.current) scrollerRef.current.scrollTop = top;
-    };
-
-    const handleToggle = (id: string) => {
-        const top = scrollerRef.current?.scrollTop ?? 0;
-        flushSync(() => {
-            setSelected((prev) => {
-                const next = new Set(prev);
-                if (next.has(id)) next.delete(id);
-                else next.add(id);
-                return next;
-            });
-        });
-        if (scrollerRef.current) scrollerRef.current.scrollTop = top;
-    };
-
-    // Pending scroll-top to restore when the scroller element first mounts (-1 = none)
-    const pendingScrollTop = useRef<number>(-1);
-    if (pendingScrollTop.current === -1) {
-        const saved = sessionStorage.getItem("certListScrollTop");
-        if (saved) {
-            sessionStorage.removeItem("certListScrollTop");
-            pendingScrollTop.current = Number(saved);
-            showBackdrop(true);
-        } else {
-            pendingScrollTop.current = -2; // mark as checked
-        }
-    }
-
     const handleDelete = async () => {
-        await onBatchDelete([...selected]);
-        setSelected(new Set());
-        setDeleteOpen(false);
+        try {
+            await onBatchDelete([...selected]);
+        } finally {
+            clearSelection();
+            setDeleteOpen(false);
+        }
     };
 
-    const handleDownloadZip = async (variant: CertVariant) => {
-        setDownloadAnchor(null);
-        setDownloading(true);
-        try {
-            const selectedCerts = certs.filter((c) => selected.has(c.id));
-            const zip = new JSZip();
-            // Render sequentially — canvas is a singleton
-            for (const cert of selectedCerts) {
-                const profileDataUrl = cert.profileImageUrl ?? "";
-                const blob = await renderCertToBlob(
-                    cert,
-                    profileDataUrl,
-                    variant,
-                );
-                zip.file(`${cert.certNum}.pdf`, blob);
-            }
-            const zipBlob = await zip.generateAsync({ type: "blob" });
-            triggerBlobDownload(zipBlob, `certificates-${variant}.zip`);
-        } catch {
-            setAlert({ type: "error", message: intl.downloadError });
-        } finally {
-            setDownloading(false);
-        }
+    const handleEditCert = (cert: Cert) => {
+        virtuosoRef.current?.getState(saveState);
+        navigate(`/certs/${cert.id}/edit`);
     };
 
     if (certs.length === 0) {
@@ -318,34 +92,6 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             </Typography>
         );
     }
-
-    // Build active chip descriptors for rendering
-    const activeChips: { label: string; onDelete: () => void }[] = [
-        ...filters.certType.map((code) => ({
-            label: `${intl.certType}: ${certTypeLabel(code)}`,
-            onDelete: () =>
-                setFilter(
-                    "certType",
-                    filters.certType.filter((c) => c !== code),
-                ),
-        })),
-        ...DATE_RANGE_FILTERS.flatMap(({ label, from, to }) =>
-            filters[from] || filters[to]
-                ? [
-                      {
-                          label: `${label}: ${filters[from] || "…"} ~ ${filters[to] || "…"}`,
-                          onDelete: () =>
-                              setFilters((p) => ({
-                                  ...p,
-                                  [from]: "",
-                                  [to]: "",
-                              })),
-                      },
-                  ]
-                : [],
-        ),
-    ];
-
     return (
         <Box
             sx={{
@@ -356,7 +102,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
                 minHeight: 0,
             }}
         >
-            {/* Hidden canvas used by renderCertToBlob for download */}
+            {/* Hidden canvas used by renderCertToBlob for ZIP download */}
             <div
                 aria-hidden="true"
                 style={{
@@ -368,466 +114,66 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             >
                 <canvas id="download-canvas" />
             </div>
-            {/* ── Toolbar ── */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    flexWrap: "wrap",
-                }}
-            >
-                <TextField
-                    size="small"
-                    placeholder={`${intl.search}...`}
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    sx={{
-                        width: 220,
-                        "& .MuiInputBase-root": {
-                            height: 32,
-                            fontSize: "0.875rem",
-                        },
-                    }}
-                    slotProps={{
-                        input: {
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon fontSize="small" />
-                                </InputAdornment>
-                            ),
-                        },
-                    }}
-                />
-                <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={refreshCerts}
-                >
-                    {intl.refresh}
-                </Button>
-                <Button
-                    size="small"
-                    variant={activeFilterCount > 0 ? "contained" : "outlined"}
-                    startIcon={<FilterListIcon />}
-                    onClick={() => setFilterOpen((v) => !v)}
-                >
-                    {intl.filter}
-                    {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-                </Button>
-                <Box sx={{ flex: 1 }} />
-                {selected.size > 0 && (
-                    <>
-                        <Typography variant="body2" color="text.secondary">
-                            已选 {selected.size} 条
-                        </Typography>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            startIcon={<DeleteIcon />}
-                            onClick={() => setDeleteOpen(true)}
-                        >
-                            {intl.delete}
-                        </Button>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<DownloadIcon />}
-                            onClick={(e) => setDownloadAnchor(e.currentTarget)}
-                            disabled={downloading}
-                        >
-                            {downloading ? "打包中..." : intl.downloadZip}
-                        </Button>
-                        <Menu
-                            anchorEl={downloadAnchor}
-                            open={Boolean(downloadAnchor)}
-                            onClose={() => setDownloadAnchor(null)}
-                        >
-                            <Tooltip
-                                title={
-                                    complianceMode
-                                        ? intl.complianceNoStampedDownload
-                                        : ""
-                                }
-                                placement="left"
-                            >
-                                <span>
-                                    <MenuItem
-                                        disabled={complianceMode}
-                                        onClick={() =>
-                                            handleDownloadZip("stamped")
-                                        }
-                                    >
-                                        {intl.stamped}
-                                    </MenuItem>
-                                </span>
-                            </Tooltip>
-                            <MenuItem
-                                onClick={() => handleDownloadZip("stampless")}
-                            >
-                                {intl.stampless}
-                            </MenuItem>
-                        </Menu>
-                    </>
-                )}
-                <Divider orientation="vertical" flexItem />
-                <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={() => navigate("/certs/new")}
-                >
-                    {intl.addOne}
-                </Button>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<UploadFileIcon />}
-                    onClick={() => navigate("/batch")}
-                >
-                    {intl.addMany}
-                </Button>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<PictureAsPdfIcon />}
-                    onClick={() => navigate("/pdf-batch")}
-                >
-                    {intl.pdfBatchEntry}
-                </Button>
-                <Tooltip title={intl.complianceModeDesc}>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                            cursor: "pointer",
-                        }}
-                        onClick={() => setComplianceConfirmOpen(true)}
-                    >
-                        <Switch
-                            checked={complianceMode}
-                            color="warning"
-                            size="small"
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={() => setComplianceConfirmOpen(true)}
-                        />
-                        <Typography variant="body2">
-                            {intl.complianceMode}
-                        </Typography>
-                    </Box>
-                </Tooltip>
-            </Box>
 
-            {/* ── Collapsible filter panel ── */}
-            <Collapse in={filterOpen}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 2,
-                            alignItems: "center",
-                        }}
-                    >
-                        <FormControl size="small" sx={{ width: 200 }}>
-                            <InputLabel>{intl.certType}</InputLabel>
-                            <Select
-                                multiple
-                                value={filters.certType}
-                                onChange={(e) =>
-                                    setFilter(
-                                        "certType",
-                                        e.target.value as string[],
-                                    )
-                                }
-                                input={<OutlinedInput label={intl.certType} />}
-                                renderValue={(selected) =>
-                                    (selected as string[])
-                                        .map(certTypeLabel)
-                                        .join(", ")
-                                }
-                            >
-                                {CERT_TYPE_ENTRIES.map(([code, label]) => (
-                                    <MenuItem key={code} value={code}>
-                                        <Checkbox
-                                            size="small"
-                                            checked={filters.certType.includes(
-                                                code,
-                                            )}
-                                        />
-                                        {label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        {/* ── Date range groups ── */}
-                        {DATE_RANGE_FILTERS.map(({ label, from, to }) => (
-                            <Box
-                                key={label}
-                                sx={{
-                                    display: "flex",
-                                    gap: 1,
-                                    alignItems: "flex-end",
-                                    border: "1px solid",
-                                    borderColor: "divider",
-                                    borderRadius: 1,
-                                    px: 1.5,
-                                    pt: 2,
-                                    pb: 1.5,
-                                    position: "relative",
-                                }}
-                            >
-                                <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{
-                                        position: "absolute",
-                                        top: -9,
-                                        left: 8,
-                                        bgcolor: "background.paper",
-                                        px: 0.5,
-                                    }}
-                                >
-                                    {label}
-                                </Typography>
-                                <TextField
-                                    size="small"
-                                    label="从"
-                                    type="date"
-                                    value={filters[from]}
-                                    onChange={(e) =>
-                                        setFilter(from, e.target.value)
-                                    }
-                                    sx={{ width: 150 }}
-                                    slotProps={{ inputLabel: { shrink: true } }}
-                                />
-                                <TextField
-                                    size="small"
-                                    label="至"
-                                    type="date"
-                                    value={filters[to]}
-                                    onChange={(e) =>
-                                        setFilter(to, e.target.value)
-                                    }
-                                    sx={{ width: 150 }}
-                                    slotProps={{ inputLabel: { shrink: true } }}
-                                />
-                            </Box>
-                        ))}
-                        {activeFilterCount > 0 && (
-                            <Button
-                                size="small"
-                                onClick={() => setFilters(EMPTY_FILTERS)}
-                            >
-                                清除全部
-                            </Button>
-                        )}
-                    </Box>
-                </Paper>
-            </Collapse>
-
-            {/* ── Active filter chips ── */}
-            {activeChips.length > 0 && (
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                    {activeChips.map((chip) => (
-                        <Chip
-                            key={chip.label}
-                            label={chip.label}
-                            size="small"
-                            onDelete={chip.onDelete}
-                        />
-                    ))}
-                </Box>
-            )}
-
-            {/* ── Table ── */}
-            <TableVirtuoso
-                ref={virtuosoRef}
-                data={filtered}
-                style={{ flex: 1, minHeight: 0 }}
-                increaseViewportBy={500}
-                components={
-                    {
-                        Scroller: forwardRef((props, ref) => (
-                            <TableContainer
-                                component={Paper}
-                                variant="outlined"
-                                {...props}
-                                ref={(el: HTMLDivElement | null) => {
-                                    scrollerRef.current = el;
-                                    if (typeof ref === "function") ref(el);
-                                    else if (ref)
-                                        (
-                                            ref as MutableRefObject<HTMLDivElement | null>
-                                        ).current = el;
-                                    if (el && pendingScrollTop.current >= 0) {
-                                        el.scrollTop = pendingScrollTop.current;
-                                        pendingScrollTop.current = -2;
-                                        showBackdrop(false);
-                                    }
-                                }}
-                                sx={{ overflowX: "auto" }}
-                            />
-                        )),
-                        Table: (props) => (
-                            <Table
-                                size="small"
-                                {...props}
-                                sx={{ minWidth: 1200 }}
-                            />
-                        ),
-                        TableHead: forwardRef((props, ref) => (
-                            <TableHead {...props} ref={ref} />
-                        )),
-                        TableRow: ({ item, ...props }) => (
-                            <TableRow
-                                hover
-                                selected={selected.has(item.id)}
-                                onClick={() => handleToggle(item.id)}
-                                sx={{ cursor: "pointer" }}
-                                {...props}
-                            />
-                        ),
-                        TableBody: forwardRef((props, ref) => (
-                            <TableBody {...props} ref={ref} />
-                        )),
-                    } as TableComponents<Cert>
-                }
-                fixedHeaderContent={() => (
-                    <TableRow sx={{ bgcolor: "grey.50" }}>
-                        <TableCell padding="checkbox">
-                            <Checkbox
-                                size="small"
-                                checked={allFilteredSelected}
-                                indeterminate={someFilteredSelected}
-                                onChange={handleSelectAll}
-                            />
-                        </TableCell>
-                        {COLUMNS.map((col) => (
-                            <TableCell
-                                key={col.key}
-                                sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
-                            >
-                                <TableSortLabel
-                                    active={sortKey === col.key}
-                                    direction={
-                                        sortKey === col.key ? sortDir : "asc"
-                                    }
-                                    onClick={() => handleSort(col.key)}
-                                >
-                                    {col.label}
-                                </TableSortLabel>
-                            </TableCell>
-                        ))}
-                        <TableCell
-                            sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
-                        >
-                            操作
-                        </TableCell>
-                    </TableRow>
-                )}
-                itemContent={(_, cert) => (
-                    <>
-                        <TableCell padding="checkbox">
-                            <Checkbox
-                                size="small"
-                                checked={selected.has(cert.id)}
-                                onChange={() => handleToggle(cert.id)}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        </TableCell>
-                        {COLUMNS.map((col) => (
-                            <TableCell
-                                key={col.key}
-                                sx={
-                                    col.clip
-                                        ? {
-                                              overflow: "hidden",
-                                              textOverflow: "ellipsis",
-                                              whiteSpace: "nowrap",
-                                              maxWidth: col.clip,
-                                          }
-                                        : {
-                                              whiteSpace: "nowrap",
-                                          }
-                                }
-                            >
-                                {col.key === "certType"
-                                    ? certTypeMap[cert.certType]
-                                    : col.date
-                                      ? formatDate(cert[col.key], col.date)
-                                      : String(cert[col.key] ?? "")}
-                            </TableCell>
-                        ))}
-                        <TableCell>
-                            <Button
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    sessionStorage.setItem(
-                                        "certListScrollTop",
-                                        String(
-                                            scrollerRef.current?.scrollTop ?? 0,
-                                        ),
-                                    );
-                                    navigate(`/certs/${cert.id}/edit`);
-                                }}
-                            >
-                                编辑
-                            </Button>
-                        </TableCell>
-                    </>
-                )}
+            <CertToolbar
+                keyword={keyword}
+                onKeywordChange={setKeyword}
+                onRefresh={refreshCerts}
+                onFilterToggle={() => setFilterOpen((v) => !v)}
+                activeFilterCount={activeFilterCount}
+                selectedCount={selected.size}
+                downloading={downloading}
+                downloadAnchor={downloadAnchor}
+                onDownloadMenuOpen={(el) => setDownloadAnchor(el)}
+                onDownloadMenuClose={() => setDownloadAnchor(null)}
+                onDownloadZip={handleDownloadZip}
+                complianceMode={complianceMode}
+                onComplianceModeClick={() => setComplianceConfirmOpen(true)}
+                onDeleteClick={() => setDeleteOpen(true)}
+                onAddOne={() => navigate("/certs/new")}
+                onAddMany={() => navigate("/batch")}
+                onPdfBatch={() => navigate("/pdf-batch")}
             />
 
-            <Dialog
-                open={complianceConfirmOpen}
-                onClose={() => setComplianceConfirmOpen(false)}
-            >
-                <DialogTitle>
-                    {complianceMode ? "关闭完全合规模式" : "开启完全合规模式"}
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        {intl.complianceModeDesc}
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setComplianceConfirmOpen(false)}>
-                        {intl.cancel}
-                    </Button>
-                    <Button
-                        color="warning"
-                        onClick={() => {
-                            setComplianceMode(!complianceMode);
-                            setComplianceConfirmOpen(false);
-                        }}
-                    >
-                        {complianceMode ? "关闭" : "开启"}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <CertFilterPanel
+                filterOpen={filterOpen}
+                filters={filters}
+                setFilter={setFilter}
+                setFilters={setFilters}
+                activeFilterCount={activeFilterCount}
+                activeChips={activeChips}
+            />
 
-            <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-                <DialogTitle>{intl.confirmDeleteTitle}</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        确定要删除选中的 {selected.size}{" "}
-                        条证书吗？此操作不可撤销。
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteOpen(false)}>
-                        {intl.cancel}
-                    </Button>
-                    <Button color="error" onClick={handleDelete}>
-                        {intl.delete}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <CertVirtuosoTable
+                virtuosoRef={virtuosoRef}
+                scrollerRef={scrollerRef}
+                data={filtered}
+                initialState={initialState}
+                selected={selected}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                allFilteredSelected={allFilteredSelected}
+                someFilteredSelected={someFilteredSelected}
+                onSort={handleSort}
+                onSelectAll={() =>
+                    handleSelectAll(filteredIds, allFilteredSelected)
+                }
+                onToggle={handleToggle}
+                onEdit={handleEditCert}
+            />
+
+            <CertDialogs
+                complianceConfirmOpen={complianceConfirmOpen}
+                onComplianceConfirmClose={() => setComplianceConfirmOpen(false)}
+                complianceMode={complianceMode}
+                onComplianceModeToggle={() =>
+                    setComplianceMode(!complianceMode)
+                }
+                deleteOpen={deleteOpen}
+                onDeleteClose={() => setDeleteOpen(false)}
+                selectedCount={selected.size}
+                onDeleteConfirm={handleDelete}
+            />
         </Box>
     );
 }

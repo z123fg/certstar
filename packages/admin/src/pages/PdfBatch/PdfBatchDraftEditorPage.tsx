@@ -28,6 +28,7 @@ export default function PdfBatchDraftEditorPage() {
     const file = pdfMap.get(draft.certNum);
     if (!file) return;
     const url = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPdfObjectUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [draft?.certNum]); // eslint-disable-line react-hooks/exhaustive-deps

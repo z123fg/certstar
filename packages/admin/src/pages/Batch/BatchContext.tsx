@@ -15,6 +15,7 @@ interface BatchContextValue {
 
 const BatchContext = createContext<BatchContextValue>({} as BatchContextValue);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useBatchContext = () => useContext(BatchContext);
 
 // Used as a React Router layout route — renders <Outlet /> inside the provider
