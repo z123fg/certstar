@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box, Button, Checkbox, Chip, Collapse, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle, FormControl, InputAdornment, InputLabel,
-  Menu, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell,
+  DialogContentText, DialogTitle, Divider, FormControl, InputAdornment, InputLabel,
+  Menu, MenuItem, OutlinedInput, Paper, Select, Switch, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from "@mui/material";
+import { TableVirtuoso, type TableComponents } from "react-virtuoso";
+import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import JSZip from "jszip";
 import { certTypeMap, toChineseDateString, toChineseDatetimeString } from "@certstar/shared";
 import { useAppContext } from "../../App";
@@ -18,14 +22,14 @@ import type { Cert } from "../../types";
 import { renderCertToBlob, triggerBlobDownload, type CertVariant } from "../../utils/canvasUtils";
 import intl from "../../intl/intl";
 
-const COLUMNS: { key: keyof Cert; label: string; date?: "date" | "datetime" }[] = [
+const COLUMNS: { key: keyof Cert; label: string; date?: "date" | "datetime"; clip?: number }[] = [
   { key: "name", label: intl.name },
   { key: "idNum", label: intl.idNum },
   { key: "certNum", label: intl.certNum },
   { key: "certType", label: intl.certType },
   { key: "expDate", label: intl.expDate, date: "date" },
-  { key: "organization", label: intl.organization },
-  { key: "issuingAgency", label: intl.issuingAgency },
+  { key: "organization", label: intl.organization, clip: 160 },
+  { key: "issuingAgency", label: intl.issuingAgency, clip: 160 },
   { key: "createdAt", label: "创建时间", date: "datetime" },
   { key: "updatedAt", label: "更新时间", date: "datetime" },
 ];
@@ -71,12 +75,13 @@ interface Props {
 }
 
 export default function CertTable({ certs, onBatchDelete }: Props) {
-  const { setAlert, refreshCerts, complianceMode } = useAppContext();
+  const { setAlert, refreshCerts, complianceMode, setComplianceMode } = useAppContext();
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [complianceConfirmOpen, setComplianceConfirmOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -188,7 +193,7 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
   ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0 }}>
       {/* Hidden canvas used by renderCertToBlob for download */}
       <div aria-hidden="true" style={{ position: "fixed", left: "-99999px", top: "-99999px", overflow: "hidden" }}>
         <canvas id="download-canvas" />
@@ -201,8 +206,8 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           sx={{
-            width: 240,
-            "& .MuiInputBase-root": { height: 40, fontSize: "0.875rem" },
+            width: 220,
+            "& .MuiInputBase-root": { height: 32, fontSize: "0.875rem" },
           }}
           slotProps={{
             input: {
@@ -210,17 +215,18 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             },
           }}
         />
-        <Button size="medium" variant="outlined" startIcon={<RefreshIcon />} onClick={refreshCerts}>
+        <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={refreshCerts}>
           {intl.refresh}
         </Button>
         <Button
-          size="medium"
+          size="small"
           variant={activeFilterCount > 0 ? "contained" : "outlined"}
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen((v) => !v)}
         >
           {intl.filter}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
         </Button>
+        <Box sx={{ flex: 1 }} />
         {selected.size > 0 && (
           <>
             <Typography variant="body2" color="text.secondary">已选 {selected.size} 条</Typography>
@@ -252,6 +258,22 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
             </Menu>
           </>
         )}
+        <Divider orientation="vertical" flexItem />
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => navigate("/certs/new")}>
+          {intl.addOne}
+        </Button>
+        <Button variant="outlined" size="small" startIcon={<UploadFileIcon />} onClick={() => navigate("/batch")}>
+          {intl.addMany}
+        </Button>
+        <Button variant="outlined" size="small" startIcon={<PictureAsPdfIcon />} onClick={() => navigate("/pdf-batch")}>
+          {intl.pdfBatchEntry}
+        </Button>
+        <Tooltip title={intl.complianceModeDesc}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, cursor: "pointer" }} onClick={() => setComplianceConfirmOpen(true)}>
+            <Switch checked={complianceMode} color="warning" size="small" onClick={(e) => e.stopPropagation()} onChange={() => setComplianceConfirmOpen(true)} />
+            <Typography variant="body2">{intl.complianceMode}</Typography>
+          </Box>
+        </Tooltip>
       </Box>
 
       {/* ── Collapsible filter panel ── */}
@@ -332,71 +354,104 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
       )}
 
       {/* ── Table ── */}
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: "grey.50" }}>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  size="small"
-                  checked={allFilteredSelected}
-                  indeterminate={someFilteredSelected}
-                  onChange={handleSelectAll}
-                />
+      <TableVirtuoso
+        data={filtered}
+        style={{ flex: 1, minHeight: 0 }}
+        increaseViewportBy={500}
+        components={{
+          Scroller: forwardRef((props, ref) => (
+            <TableContainer component={Paper} variant="outlined" {...props} ref={ref} sx={{ overflowX: "auto" }} />
+          )),
+          Table: (props) => <Table size="small" {...props} sx={{ minWidth: 1200 }} />,
+          TableHead: forwardRef((props, ref) => <TableHead {...props} ref={ref} />),
+          TableRow: ({ item, ...props }) => (
+            <TableRow
+              hover
+              selected={selected.has(item.id)}
+              onClick={() => handleToggle(item.id)}
+              sx={{ cursor: "pointer" }}
+              {...props}
+            />
+          ),
+          TableBody: forwardRef((props, ref) => <TableBody {...props} ref={ref} />),
+        } as TableComponents<Cert>}
+        fixedHeaderContent={() => (
+          <TableRow sx={{ bgcolor: "grey.50" }}>
+            <TableCell padding="checkbox">
+              <Checkbox
+                size="small"
+                checked={allFilteredSelected}
+                indeterminate={someFilteredSelected}
+                onChange={handleSelectAll}
+              />
+            </TableCell>
+            {COLUMNS.map((col) => (
+              <TableCell key={col.key} sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                <TableSortLabel
+                  active={sortKey === col.key}
+                  direction={sortKey === col.key ? sortDir : "asc"}
+                  onClick={() => handleSort(col.key)}
+                >
+                  {col.label}
+                </TableSortLabel>
               </TableCell>
-              {COLUMNS.map((col) => (
-                <TableCell key={col.key} sx={{ fontWeight: 600 }}>
-                  <TableSortLabel
-                    active={sortKey === col.key}
-                    direction={sortKey === col.key ? sortDir : "asc"}
-                    onClick={() => handleSort(col.key)}
-                  >
-                    {col.label}
-                  </TableSortLabel>
-                </TableCell>
-              ))}
-              <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.map((cert) => (
-              <TableRow
-                key={cert.id}
-                hover
-                selected={selected.has(cert.id)}
-                onClick={() => handleToggle(cert.id)}
-                sx={{ cursor: "pointer" }}
-              >
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    size="small"
-                    checked={selected.has(cert.id)}
-                    onChange={() => handleToggle(cert.id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </TableCell>
-                {COLUMNS.map((col) => (
-                  <TableCell key={col.key}>
-                    {col.key === "certType"
-                      ? certTypeMap[cert.certType]
-                      : col.date
-                      ? formatDate(cert[col.key], col.date)
-                      : String(cert[col.key] ?? "")}
-                  </TableCell>
-                ))}
-                <TableCell>
-                  <Button
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/certs/${cert.id}/edit`); }}
-                  >
-                    编辑
-                  </Button>
-                </TableCell>
-              </TableRow>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            <TableCell sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>操作</TableCell>
+          </TableRow>
+        )}
+        itemContent={(_, cert) => (
+          <>
+            <TableCell padding="checkbox">
+              <Checkbox
+                size="small"
+                checked={selected.has(cert.id)}
+                onChange={() => handleToggle(cert.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </TableCell>
+            {COLUMNS.map((col) => (
+              <TableCell
+                key={col.key}
+                sx={col.clip ? {
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: col.clip,
+                } : {
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {col.key === "certType"
+                  ? certTypeMap[cert.certType]
+                  : col.date
+                  ? formatDate(cert[col.key], col.date)
+                  : String(cert[col.key] ?? "")}
+              </TableCell>
+            ))}
+            <TableCell>
+              <Button
+                size="small"
+                onClick={(e) => { e.stopPropagation(); navigate(`/certs/${cert.id}/edit`); }}
+              >
+                编辑
+              </Button>
+            </TableCell>
+          </>
+        )}
+      />
+
+      <Dialog open={complianceConfirmOpen} onClose={() => setComplianceConfirmOpen(false)}>
+        <DialogTitle>{complianceMode ? "关闭完全合规模式" : "开启完全合规模式"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{intl.complianceModeDesc}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setComplianceConfirmOpen(false)}>{intl.cancel}</Button>
+          <Button color="warning" onClick={() => { setComplianceMode(!complianceMode); setComplianceConfirmOpen(false); }}>
+            {complianceMode ? "关闭" : "开启"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <DialogTitle>{intl.confirmDeleteTitle}</DialogTitle>
