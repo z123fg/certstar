@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, type Ref } from "react";
+import { useState, useRef, forwardRef } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
