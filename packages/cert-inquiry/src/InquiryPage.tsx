@@ -81,7 +81,7 @@ export default function InquiryPage() {
     }, [slug]);
 
     return (
-        <PageLayout>
+        <PageLayout showBack>
             {state.status === "loading" && <LoaderBackdrop />}
 
             {state.status === "error" && (

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
@@ -111,7 +112,7 @@ export default function SearchPage() {
                         getOptionLabel={(o) => o.name}
                         filterOptions={(x) => x}
                         loading={loading}
-                        loadingText={null}
+                        loadingText="搜索中..."
                         noOptionsText={error ?? "未找到证书"}
                         open={open}
                         onClose={(_, reason) => {
@@ -160,6 +161,18 @@ export default function SearchPage() {
                                 size="small"
                                 placeholder="身份证号码"
                                 autoComplete="off"
+                                slotProps={{
+                                    ...params.slotProps,
+                                    input: {
+                                        ...params.slotProps?.input,
+                                        endAdornment: (
+                                            <>
+                                                {loading && <CircularProgress color="inherit" size={16} />}
+                                                {(params.slotProps?.input as { endAdornment?: React.ReactNode })?.endAdornment}
+                                            </>
+                                        ),
+                                    },
+                                }}
                                 onKeyDown={(e) => {
                                     if (
                                         e.key === "Enter" &&

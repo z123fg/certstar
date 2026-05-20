@@ -6,9 +6,10 @@ interface PageLayoutProps {
     children: React.ReactNode;
     maxWidth?: number;
     py?: number | string;
+    showBack?: boolean;
 }
 
-export default function PageLayout({ children, maxWidth = 600, py = 5 }: PageLayoutProps) {
+export default function PageLayout({ children, maxWidth = 600, py = 5, showBack }: PageLayoutProps) {
     return (
         <Box
             sx={{
@@ -21,7 +22,7 @@ export default function PageLayout({ children, maxWidth = 600, py = 5 }: PageLay
                 backgroundAttachment: "fixed",
             }}
         >
-            <PageHeader />
+            <PageHeader showBack={showBack} />
             <Box
                 component="main"
                 sx={{ flex: 1, p: "10px", py, maxWidth, mx: "auto", width: "100%", position: "relative" }}
