@@ -26,32 +26,32 @@ const DEFAULT_TEXT_PROPS: Record<
         textAlign: "center",
     },
     idNum: {
-        left: 1175,
+        left: 957,
         top: 1942,
         fontSize: 60,
         fontFamily: "CertSimSun",
         fontWeight: 650,
-        originX: "center",
+        originX: "left",
         originY: "center",
         textAlign: "center",
     },
     organization: {
-        left: 1175,
+        left: 957,
         top: 2100,
         fontSize: 60,
         fontFamily: "CertSimSun",
         fontWeight: 650,
-        originX: "center",
+        originX: "left",
         originY: "center",
         textAlign: "center",
     },
     certNum: {
-        left: 1175,
+        left: 957,
         top: 2265,
         fontSize: 60,
         fontFamily: "CertSimSun",
         fontWeight: 650,
-        originX: "center",
+        originX: "left",
         originY: "center",
         textAlign: "center",
     },
@@ -198,8 +198,8 @@ const adjustTextSize = (obj: FabricTextEntry) => {
 
     if (obj.width! < 450) {
         obj.set({
-            originX: "center",
-            left: 1175,
+            originX: defaults.originX,
+            left: defaults.left,
             scaleX: 1,
             top: defaults.top,
         });
@@ -225,52 +225,46 @@ const adjustTextSize = (obj: FabricTextEntry) => {
     }
 };
 
+const getSavedLayout = (cert: Partial<Cert>, key: string) => ({
+    left:   cert[`${key}Left`   as keyof Cert] as number | undefined,
+    top:    cert[`${key}Top`    as keyof Cert] as number | undefined,
+    scaleX: cert[`${key}ScaleX` as keyof Cert] as number | undefined,
+    scaleY: cert[`${key}ScaleY` as keyof Cert] as number | undefined,
+    angle:  cert[`${key}Angle`  as keyof Cert] as number | undefined,
+});
+
 export const renderTextFields = (cert: Partial<Cert>) => {
     if (!canvas) return;
-    const fields = [
-        "name",
-        "idNum",
-        "organization",
-        "certNum",
-        "expDate",
-    ] as const;
+    const fields = ["name", "idNum", "organization", "certNum", "expDate"] as const;
+
     fields.forEach((key) => {
         const value = String(cert[key] ?? "");
         const defaults = DEFAULT_TEXT_PROPS[key];
         const existing = getObjsByEntry(key)[0] as FabricTextEntry | undefined;
 
         if (existing) {
-            existing.set({ text: getTextValue(key, value) });
-            adjustTextSize(existing);
+            const newText = getTextValue(key, value);
+            if (existing.text !== newText) {
+                existing.set({ text: newText });
+                adjustTextSize(existing);
+            }
             canvas!.renderAll();
             return;
         }
 
-        const savedLeft = cert[`${key}Left` as keyof Cert] as
-            | number
-            | undefined;
-        const savedTop = cert[`${key}Top` as keyof Cert] as number | undefined;
-        const savedScaleX = cert[`${key}ScaleX` as keyof Cert] as
-            | number
-            | undefined;
-        const savedScaleY = cert[`${key}ScaleY` as keyof Cert] as
-            | number
-            | undefined;
-        const savedAngle = cert[`${key}Angle` as keyof Cert] as
-            | number
-            | undefined;
+        const saved = getSavedLayout(cert, key);
         const obj = new fabric.Text(getTextValue(key, value), {
             ...CONTROL_STYLE,
             ...defaults,
-            left: savedLeft ?? defaults.left,
-            top: savedTop ?? defaults.top,
-            scaleX: savedScaleX ?? 1,
-            scaleY: savedScaleY ?? 1,
-            angle: savedAngle ?? 0,
-            originX: "center",
+            left:   saved.left   ?? defaults.left,
+            top:    saved.top    ?? defaults.top,
+            scaleX: saved.scaleX ?? 1,
+            scaleY: saved.scaleY ?? 1,
+            angle:  saved.angle  ?? 0,
         }) as FabricTextEntry;
         obj.entry = key;
-        adjustTextSize(obj);
+        // Skip auto-layout if DB positions exist — they are authoritative
+        if (saved.left === undefined) adjustTextSize(obj);
         canvas!.add(obj).bringToFront(obj);
     });
     canvas.renderAll();
@@ -376,7 +370,11 @@ export const exportCanvasAsDataUrl = (): string =>
 /** Wrap a canvas PNG data URL into an A4 PDF Blob. */
 export const canvasToPdfBlob = (dataUrl: string): Blob => {
     // A4 in mm: 210 × 297
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+    });
     doc.addImage(dataUrl, "PNG", 0, 0, 210, 297, undefined, "FAST");
     return doc.output("blob");
 };

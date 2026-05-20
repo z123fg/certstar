@@ -77,14 +77,14 @@ export default function CertEditorPage() {
         null,
     );
 
-    const uploadCertImage = async (): Promise<string> => {
+    const uploadCertImage = async (cert: Partial<Cert>): Promise<string> => {
         if (!getCanvas()) throw new Error("Canvas is not ready");
         const blob = await renderCertToBlob(
-            formData,
+            cert,
             profileImageDataUrl,
             "stamped",
         );
-        const filename = `cert-image/${formData.certNum}.pdf`;
+        const filename = `cert-image/${cert.certNum}.pdf`;
         const uploadUrl = await getUploadUrl(filename, "application/pdf");
         await fetch(uploadUrl, {
             method: "PUT",
@@ -112,15 +112,15 @@ export default function CertEditorPage() {
     const handleSubmit = async () => {
         showBackdrop(true);
         try {
-            const certImageUrl = await uploadCertImage();
-            const profileImageUrl = await uploadProfileImage(formData.idNum!);
+            const certData = { ...formData, ...getSnapshotLayout() };
+            const certImageUrl = await uploadCertImage(certData);
+            const profileImageUrl = await uploadProfileImage(certData.idNum!);
             const payload = {
-                ...formData,
-                ...getSnapshotLayout(),
+                ...certData,
                 certImageUrl,
                 ...(profileImageUrl ? { profileImageUrl } : {}),
-                ...(formData.expDate
-                    ? { expDate: parseExpDate(formData.expDate)! }
+                ...(certData.expDate
+                    ? { expDate: parseExpDate(certData.expDate)! }
                     : {}),
             } as Omit<Cert, "id" | "createdAt" | "updatedAt">;
 
@@ -147,7 +147,7 @@ export default function CertEditorPage() {
         showBackdrop(true);
         try {
             const blob = await renderCertToBlob(
-                formData,
+                { ...formData, ...getSnapshotLayout() },
                 profileImageDataUrl,
                 variant,
             );
