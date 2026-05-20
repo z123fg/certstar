@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { certTypeMap } from "@certstar/shared";
 import type { CertTypeCode } from "@certstar/shared";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -49,6 +51,7 @@ function formatDate(iso: string) {
 
 export default function InquiryPage() {
     const { slug } = useParams<{ slug: string }>();
+    const navigate = useNavigate();
     const [state, setState] = useState<State>({ status: "loading" });
 
     useEffect(() => {
@@ -81,7 +84,7 @@ export default function InquiryPage() {
     }, [slug]);
 
     return (
-        <PageLayout showBack>
+        <PageLayout>
             {state.status === "loading" && <LoaderBackdrop />}
 
             {state.status === "error" && (
@@ -109,6 +112,19 @@ export default function InquiryPage() {
             )}
 
             {state.status === "ok" && <CertCard cert={state.cert} />}
+
+            {state.status !== "loading" && (
+                <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<ArrowBackIcon />}
+                        onClick={() => navigate("/")}
+                        sx={{ color: "#fff", borderColor: "#fff", "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.1)" } }}
+                    >
+                        返回证书搜索页面
+                    </Button>
+                </Box>
+            )}
         </PageLayout>
     );
 }
