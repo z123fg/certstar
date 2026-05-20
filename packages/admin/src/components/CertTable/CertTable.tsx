@@ -121,6 +121,8 @@ export default function CertTable({ certs, onBatchDelete }: Props) {
                 onRefresh={refreshCerts}
                 onFilterToggle={() => setFilterOpen((v) => !v)}
                 activeFilterCount={activeFilterCount}
+                filteredCount={filtered.length}
+                totalCount={certs.length}
                 selectedCount={selected.size}
                 downloading={downloading}
                 downloadAnchor={downloadAnchor}

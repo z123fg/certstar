@@ -26,12 +26,9 @@ import type { Cert } from "../../../types";
 import type { SortDir } from "../hooks/useCertFilter";
 import intl from "../../../intl/intl";
 
-const COLUMNS: {
-    key: keyof Cert;
-    label: string;
-    date?: "date" | "datetime";
-    clip?: number;
-}[] = [
+type Column = { key: keyof Cert; label: string; date?: "date" | "datetime"; clip?: number };
+
+const COLUMNS_BEFORE_ACTION: Column[] = [
     { key: "name", label: intl.name },
     { key: "idNum", label: intl.idNum },
     { key: "certNum", label: intl.certNum },
@@ -39,7 +36,9 @@ const COLUMNS: {
     { key: "expDate", label: intl.expDate, date: "date" },
     { key: "organization", label: intl.organization, clip: 160 },
     { key: "issuingAgency", label: intl.issuingAgency, clip: 160 },
-    { key: "createdAt", label: "创建时间", date: "datetime" },
+];
+
+const COLUMNS_AFTER_ACTION: Column[] = [
     { key: "updatedAt", label: "更新时间", date: "datetime" },
 ];
 
@@ -174,7 +173,7 @@ export default function CertVirtuosoTable({
                             onChange={onSelectAll}
                         />
                     </TableCell>
-                    {COLUMNS.map((col) => (
+                    {COLUMNS_BEFORE_ACTION.map((col) => (
                         <TableCell
                             key={col.key}
                             sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
@@ -191,6 +190,20 @@ export default function CertVirtuosoTable({
                     <TableCell sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         操作
                     </TableCell>
+                    {COLUMNS_AFTER_ACTION.map((col) => (
+                        <TableCell
+                            key={col.key}
+                            sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
+                        >
+                            <TableSortLabel
+                                active={sortKey === col.key}
+                                direction={sortKey === col.key ? sortDir : "asc"}
+                                onClick={() => onSort(col.key)}
+                            >
+                                {col.label}
+                            </TableSortLabel>
+                        </TableCell>
+                    ))}
                 </TableRow>
             )}
             itemContent={(_, cert) => (
@@ -203,7 +216,7 @@ export default function CertVirtuosoTable({
                             onClick={(e) => e.stopPropagation()}
                         />
                     </TableCell>
-                    {COLUMNS.map((col) => (
+                    {COLUMNS_BEFORE_ACTION.map((col) => (
                         <TableCell
                             key={col.key}
                             sx={
@@ -235,6 +248,11 @@ export default function CertVirtuosoTable({
                             编辑
                         </Button>
                     </TableCell>
+                    {COLUMNS_AFTER_ACTION.map((col) => (
+                        <TableCell key={col.key} sx={{ whiteSpace: "nowrap" }}>
+                            {col.date ? formatDate(cert[col.key], col.date) : String(cert[col.key] ?? "")}
+                        </TableCell>
+                    ))}
                 </>
             )}
         />

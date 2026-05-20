@@ -23,6 +23,7 @@ import intl from "../../../intl/intl";
 
 const CERT_TYPE_ENTRIES = Object.entries(certTypeMap) as [string, string][];
 
+
 interface CertFilterPanelProps {
     filterOpen: boolean;
     filters: Filters;

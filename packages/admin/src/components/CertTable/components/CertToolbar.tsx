@@ -27,6 +27,8 @@ interface CertToolbarProps {
     onRefresh: () => void;
     onFilterToggle: () => void;
     activeFilterCount: number;
+    filteredCount: number;
+    totalCount: number;
     selectedCount: number;
     downloading: boolean;
     downloadAnchor: HTMLElement | null;
@@ -47,6 +49,8 @@ export default function CertToolbar({
     onRefresh,
     onFilterToggle,
     activeFilterCount,
+    filteredCount,
+    totalCount,
     selectedCount,
     downloading,
     downloadAnchor,
@@ -67,10 +71,7 @@ export default function CertToolbar({
                 placeholder={`${intl.search}...`}
                 value={keyword}
                 onChange={(e) => onKeywordChange(e.target.value)}
-                sx={{
-                    width: 220,
-                    "& .MuiInputBase-root": { height: 32, fontSize: "0.875rem" },
-                }}
+                sx={{ width: 220, "& .MuiInputBase-root": { height: 30 } }}
                 slotProps={{
                     input: {
                         startAdornment: (
@@ -93,6 +94,12 @@ export default function CertToolbar({
                 {intl.filter}
                 {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </Button>
+
+            <Typography variant="body2" color="text.secondary">
+                {filteredCount === totalCount
+                    ? `共 ${totalCount} 条`
+                    : `${filteredCount} / ${totalCount} 条`}
+            </Typography>
 
             <Box sx={{ flex: 1 }} />
 

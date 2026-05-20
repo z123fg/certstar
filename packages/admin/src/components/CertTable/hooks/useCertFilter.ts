@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { certTypeMap, toChineseDateString } from "@certstar/shared";
 import type { Cert } from "../../../types";
 import intl from "../../../intl/intl";
@@ -35,11 +35,39 @@ export const DATE_RANGE_FILTERS = [
 export const certTypeLabel = (code: string): string =>
     certTypeMap[code as keyof typeof certTypeMap] ?? code;
 
+// ── Session persistence ──────────────────────────────────────────────────────
+
+const STORAGE_KEY = "certListFilterState";
+
+interface PersistedState {
+    keyword: string;
+    sortKey: keyof Cert;
+    sortDir: SortDir;
+    filters: Filters;
+}
+
+function loadState(): Partial<PersistedState> {
+    try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? (JSON.parse(saved) as Partial<PersistedState>) : {};
+    } catch {
+        return {};
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export function useCertFilter(certs: Cert[]) {
-    const [keyword, setKeyword] = useState("");
-    const [sortKey, setSortKey] = useState<keyof Cert>("createdAt");
-    const [sortDir, setSortDir] = useState<SortDir>("desc");
-    const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+    const [keyword, setKeyword] = useState<string>(() => loadState().keyword ?? "");
+    const [sortKey, setSortKey] = useState<keyof Cert>(() => loadState().sortKey ?? "expDate");
+    const [sortDir, setSortDir] = useState<SortDir>(() => loadState().sortDir ?? "desc");
+    const [filters, setFilters] = useState<Filters>(() => loadState().filters ?? EMPTY_FILTERS);
+
+    // Keep sessionStorage in sync so state survives navigation within the tab.
+    useEffect(() => {
+        const state: PersistedState = { keyword, sortKey, sortDir, filters };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }, [keyword, sortKey, sortDir, filters]);
 
     const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
         setFilters((prev) => ({ ...prev, [key]: value }));
@@ -53,40 +81,55 @@ export function useCertFilter(certs: Cert[]) {
         }
     };
 
-    const filtered = useMemo(() => certs
-        .filter(
-            (c) =>
-                !keyword ||
-                [c.name, c.idNum, c.certNum, c.organization, c.issuingAgency].some((v) =>
-                    v?.toLowerCase().includes(keyword.toLowerCase()),
-                ),
-        )
-        .filter((c) => filters.certType.length === 0 || filters.certType.includes(c.certType))
-        .filter((c) => !filters.expDateFrom || toChineseDateString(c.expDate) >= filters.expDateFrom)
-        .filter((c) => !filters.expDateTo || toChineseDateString(c.expDate) <= filters.expDateTo)
-        .filter(
-            (c) =>
-                !filters.createdAtFrom ||
-                toChineseDateString(c.createdAt) >= filters.createdAtFrom,
-        )
-        .filter(
-            (c) =>
-                !filters.createdAtTo || toChineseDateString(c.createdAt) <= filters.createdAtTo,
-        )
-        .filter(
-            (c) =>
-                !filters.updatedAtFrom ||
-                toChineseDateString(c.updatedAt) >= filters.updatedAtFrom,
-        )
-        .filter(
-            (c) =>
-                !filters.updatedAtTo || toChineseDateString(c.updatedAt) <= filters.updatedAtTo,
-        )
-        .sort((a, b) => {
-            const av = String(a[sortKey] ?? "");
-            const bv = String(b[sortKey] ?? "");
-            return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-        }), [certs, keyword, filters, sortKey, sortDir]);
+    const filtered = useMemo(
+        () =>
+            certs
+                .filter(
+                    (c) =>
+                        !keyword ||
+                        [c.name, c.idNum, c.certNum, c.organization, c.issuingAgency].some((v) =>
+                            v?.toLowerCase().includes(keyword.toLowerCase()),
+                        ),
+                )
+                .filter(
+                    (c) => filters.certType.length === 0 || filters.certType.includes(c.certType),
+                )
+                .filter(
+                    (c) =>
+                        !filters.expDateFrom ||
+                        toChineseDateString(c.expDate) >= filters.expDateFrom,
+                )
+                .filter(
+                    (c) =>
+                        !filters.expDateTo || toChineseDateString(c.expDate) <= filters.expDateTo,
+                )
+                .filter(
+                    (c) =>
+                        !filters.createdAtFrom ||
+                        toChineseDateString(c.createdAt) >= filters.createdAtFrom,
+                )
+                .filter(
+                    (c) =>
+                        !filters.createdAtTo ||
+                        toChineseDateString(c.createdAt) <= filters.createdAtTo,
+                )
+                .filter(
+                    (c) =>
+                        !filters.updatedAtFrom ||
+                        toChineseDateString(c.updatedAt) >= filters.updatedAtFrom,
+                )
+                .filter(
+                    (c) =>
+                        !filters.updatedAtTo ||
+                        toChineseDateString(c.updatedAt) <= filters.updatedAtTo,
+                )
+                .sort((a, b) => {
+                    const av = String(a[sortKey] ?? "");
+                    const bv = String(b[sortKey] ?? "");
+                    return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+                }),
+        [certs, keyword, filters, sortKey, sortDir],
+    );
 
     const activeFilterCount =
         (filters.certType.length > 0 ? 1 : 0) +
