@@ -4,8 +4,9 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 
-// Run in main thread — no worker needed for single-page cert display
-pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+// Worker is copied to public/pdf.worker.js by the Vite plugin (always served
+// as application/javascript regardless of server .mjs MIME configuration).
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
 export default function PdfViewer({ url }: { url: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,7 +54,8 @@ export default function PdfViewer({ url }: { url: string }) {
 
                 await page.render({ canvas, viewport }).promise;
                 if (!cancelled) setLoading(false);
-            } catch {
+            } catch (err) {
+                console.error("[PdfViewer] render failed:", err);
                 if (!cancelled) {
                     setError(true);
                     setLoading(false);
