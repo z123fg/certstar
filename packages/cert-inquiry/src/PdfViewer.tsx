@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export default function PdfViewer({ url }: { url: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
