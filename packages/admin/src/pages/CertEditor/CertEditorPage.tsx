@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
     Box,
     Button,
@@ -14,181 +12,40 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import SaveIcon from "@mui/icons-material/Save";
-import { parseExpDate } from "@certstar/shared";
-import type { CertVariant } from "../../utils/canvasUtils";
-import { useAppContext } from "../../App";
 import CertForm from "./CertForm";
 import CertCanvas from "./CertCanvas";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
-import type { Cert } from "../../types";
-import { createOne, deleteOne, updateOne } from "../../services/cert";
-import { getUploadUrl } from "../../services/sts";
-import {
-    getCanvas,
-    getSnapshotLayout,
-    renderCertToBlob,
-    triggerBlobDownload,
-} from "../../utils/canvasUtils";
-import { isCertDraftValid } from "../../utils/certValidation";
+import PdfViewer from "../../components/PdfViewer";
+import { useCertEditor } from "./useCertEditor";
 import intl from "../../intl/intl";
 
 export default function CertEditorPage() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { certs, refreshCerts, setAlert, showBackdrop, complianceMode } =
-        useAppContext();
-    const isNew = !id;
-    const [formData, setFormData] = useState<Partial<Cert>>(
-        () =>
-            (id ? certs.find((c) => c.id === id) : undefined) ?? {
-                certType: "WTOP",
-            },
-    );
-
-    const isFormValid = isCertDraftValid(formData);
-    const [profileImageDataUrl, setProfileImageDataUrl] = useState(
-        () => formData.profileImageUrl ?? "",
-    );
-    const [deleteOpen, setDeleteOpen] = useState(false);
-
-    // Hydrate form once certs load (handles direct URL access / page refresh)
-    useEffect(() => {
-        if (!id || formData.id) return;
-        const cert = certs.find((c) => c.id === id);
-        if (cert) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFormData(cert);
-            setProfileImageDataUrl(cert.profileImageUrl ?? "");
-        }
-    }, [certs]);
-
-    useEffect(() => {
-        showBackdrop(true);
-        return () => showBackdrop(false);
-    }, []);
-
-    // In compliance mode we show a PDF preview instead of canvas — dismiss backdrop once URL is available
-    useEffect(() => {
-        if (complianceMode && !isNew && formData.certImageUrl) {
-            showBackdrop(false);
-        }
-    }, [complianceMode, formData.certImageUrl]);
-    const [downloadAnchor, setDownloadAnchor] = useState<HTMLElement | null>(
-        null,
-    );
-
-    const uploadCertImage = async (cert: Partial<Cert>): Promise<string> => {
-        if (!getCanvas()) throw new Error("Canvas is not ready");
-        const blob = await renderCertToBlob(
-            cert,
-            profileImageDataUrl,
-            "stamped",
-        );
-        const filename = `cert-image/${cert.certNum}.pdf`;
-        const uploadUrl = await getUploadUrl(filename, "application/pdf");
-        await fetch(uploadUrl, {
-            method: "PUT",
-            body: blob,
-            headers: { "Content-Type": "application/pdf" },
-        });
-        return `${import.meta.env.VITE_OSS_BASE_URL}/${filename}`;
-    };
-
-    const uploadProfileImage = async (
-        idNum: string,
-    ): Promise<string | undefined> => {
-        if (!profileImageDataUrl) return undefined;
-        const blob = await fetch(profileImageDataUrl).then((r) => r.blob());
-        const filename = `profile-image/${idNum}.jpg`;
-        const uploadUrl = await getUploadUrl(filename, "image/jpeg");
-        await fetch(uploadUrl, {
-            method: "PUT",
-            body: blob,
-            headers: { "Content-Type": "image/jpeg" },
-        });
-        return `${import.meta.env.VITE_OSS_BASE_URL}/${filename}`;
-    };
-
-    const handleSubmit = async () => {
-        showBackdrop(true);
-        try {
-            const certData = { ...formData, ...getSnapshotLayout() };
-            const certImageUrl = await uploadCertImage(certData);
-            const profileImageUrl = await uploadProfileImage(certData.idNum!);
-            const payload = {
-                ...certData,
-                certImageUrl,
-                ...(profileImageUrl ? { profileImageUrl } : {}),
-                ...(certData.expDate
-                    ? { expDate: parseExpDate(certData.expDate)! }
-                    : {}),
-            } as Omit<Cert, "id" | "createdAt" | "updatedAt">;
-
-            if (isNew) {
-                await createOne(payload);
-            } else {
-                await updateOne(id!, payload);
-            }
-            await refreshCerts();
-            setAlert({
-                type: "success",
-                message: isNew ? intl.saveSuccess : intl.updateSuccess,
-            });
-            navigate("/");
-        } catch {
-            setAlert({ type: "error", message: intl.saveError });
-        } finally {
-            showBackdrop(false);
-        }
-    };
-
-    const handleDownload = async (variant: CertVariant) => {
-        setDownloadAnchor(null);
-        showBackdrop(true);
-        try {
-            const blob = await renderCertToBlob(
-                { ...formData, ...getSnapshotLayout() },
-                profileImageDataUrl,
-                variant,
-            );
-            triggerBlobDownload(
-                blob,
-                `${formData.certNum ?? "certificate"}.pdf`,
-            );
-        } catch {
-            setAlert({ type: "error", message: intl.downloadError });
-        } finally {
-            showBackdrop(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!id) return;
-        showBackdrop(true);
-        try {
-            await deleteOne(id);
-            await refreshCerts();
-            setAlert({ type: "success", message: intl.deleteSuccess });
-            navigate("/");
-        } catch {
-            setAlert({ type: "error", message: intl.deleteError });
-        } finally {
-            showBackdrop(false);
-            setDeleteOpen(false);
-        }
-    };
+    const {
+        isNew,
+        isFormValid,
+        complianceMode,
+        formData,
+        setFormData,
+        profileImageDataUrl,
+        setProfileImageDataUrl,
+        deleteOpen,
+        setDeleteOpen,
+        downloadAnchor,
+        setDownloadAnchor,
+        handleSubmit,
+        handleDownload,
+        handleDelete,
+        onCanvasReady,
+        onCanvasLoading,
+        navigate,
+    } = useCertEditor();
 
     return (
         <Box sx={{ p: 3 }}>
             {/* Hidden canvas used by renderCertToBlob for download */}
             <div
                 aria-hidden="true"
-                style={{
-                    position: "fixed",
-                    left: "-99999px",
-                    top: "-99999px",
-                    overflow: "hidden",
-                }}
+                style={{ position: "fixed", left: "-99999px", top: "-99999px", overflow: "hidden" }}
             >
                 <canvas id="download-canvas" />
             </div>
@@ -196,37 +53,26 @@ export default function CertEditorPage() {
             <Box sx={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
                 {/* Form panel */}
                 <Box sx={{ width: 320, flexShrink: 0 }}>
-                    <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ mb: 3, alignItems: "center" }}
-                    >
-                        <Button
-                            startIcon={<ArrowBackIcon />}
-                            onClick={() => navigate(-1)}
-                            size="small"
-                        >
+                    <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "center" }}>
+                        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} size="small">
                             {intl.back}
                         </Button>
                         <Typography variant="h6">
                             {isNew ? intl.addOne : intl.editCert}
                         </Typography>
                     </Stack>
+
                     <CertForm
                         data={formData}
                         profileImageDataUrl={profileImageDataUrl}
                         onChange={setFormData}
                         onProfileImageChange={setProfileImageDataUrl}
                     />
+
                     <Divider sx={{ my: 2 }} />
-                    <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ flexWrap: "wrap" }}
-                    >
-                        <Tooltip
-                            title={complianceMode ? intl.complianceNoStampedSubmit : ""}
-                        >
+
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                        <Tooltip title={complianceMode ? intl.complianceNoStampedSubmit : ""}>
                             <span>
                                 <Button
                                     variant="contained"
@@ -238,6 +84,7 @@ export default function CertEditorPage() {
                                 </Button>
                             </span>
                         </Tooltip>
+
                         <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
@@ -251,15 +98,9 @@ export default function CertEditorPage() {
                             open={Boolean(downloadAnchor)}
                             onClose={() => setDownloadAnchor(null)}
                         >
-                            <Tooltip
-                                title={complianceMode ? intl.complianceNoStampedDownload : ""}
-                                placement="left"
-                            >
+                            <Tooltip title={complianceMode ? intl.complianceNoStampedDownload : ""} placement="left">
                                 <span>
-                                    <MenuItem
-                                        disabled={complianceMode}
-                                        onClick={() => handleDownload("stamped")}
-                                    >
+                                    <MenuItem disabled={complianceMode} onClick={() => handleDownload("stamped")}>
                                         {intl.stamped}
                                     </MenuItem>
                                 </span>
@@ -268,6 +109,7 @@ export default function CertEditorPage() {
                                 {intl.stampless}
                             </MenuItem>
                         </Menu>
+
                         {!isNew && (
                             <Button
                                 variant="outlined"
@@ -300,18 +142,9 @@ export default function CertEditorPage() {
                                 }}
                             />
                         ) : (
-                            <Box
-                                component="iframe"
-                                src={formData.certImageUrl}
-                                sx={{
-                                    flex: 1,
-                                    height: "calc(100vh - 80px)",
-                                    border: "1px solid",
-                                    borderColor: "divider",
-                                    borderRadius: 1,
-                                    display: "block",
-                                }}
-                            />
+                            <Box sx={{ flex: 1, height: "calc(100vh - 80px)", overflowY: "auto", border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+                                <PdfViewer url={formData.certImageUrl!} />
+                            </Box>
                         )
                     ) : null /* backdrop stays open while certImageUrl loads */
                 ) : (
@@ -320,8 +153,8 @@ export default function CertEditorPage() {
                             <CertCanvas
                                 cert={formData}
                                 profileImageDataUrl={profileImageDataUrl}
-                                onReady={() => showBackdrop(false)}
-                                onLoading={showBackdrop}
+                                onReady={onCanvasReady}
+                                onLoading={onCanvasLoading}
                             />
                         </Box>
                     </Box>

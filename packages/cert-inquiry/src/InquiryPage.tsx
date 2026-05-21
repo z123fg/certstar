@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PdfViewer from "./PdfViewer";
 import { useNavigate, useParams } from "react-router-dom";
 import { certTypeMap } from "@certstar/shared";
 import type { CertTypeCode } from "@certstar/shared";
@@ -29,6 +30,7 @@ interface CertData {
     expDate: string;
     certImageUrl: string | null;
     profileImageUrl: string | null;
+    expired?: boolean;
 }
 
 type State =
@@ -36,18 +38,8 @@ type State =
     | { status: "error"; message: string }
     | { status: "ok"; cert: CertData };
 
+import { formatChineseDateLong } from "@certstar/shared";
 import { API_URL } from "./config";
-
-const CHINA_DATE_FMT = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-});
-
-function formatDate(iso: string) {
-    return CHINA_DATE_FMT.format(new Date(iso));
-}
 
 export default function InquiryPage() {
     const { slug } = useParams<{ slug: string }>();
@@ -62,9 +54,6 @@ export default function InquiryPage() {
         const controller = new AbortController();
         fetch(`${API_URL}/inquiry/${slug}`, { signal: controller.signal })
             .then(async (res) => {
-                if (res.status === 410) throw new Error("证书已过期");
-                // Check ok before parsing — a non-JSON error body would throw
-                // SyntaxError and hide the real HTTP status.
                 if (!res.ok) {
                     let msg = "查询失败";
                     try {
@@ -134,21 +123,7 @@ function CertImage({ url }: { url: string }) {
     const [imageLoaded, setImageLoaded] = useState(false);
 
     if (isPdf) {
-        return (
-            <Box sx={{ width: "100%", aspectRatio: "2481 / 3509" }}>
-                <Box
-                    component="iframe"
-                    src={url}
-                    title="证书文件"
-                    sx={{
-                        width: "100%",
-                        height: "100%",
-                        border: "none",
-                        display: "block",
-                    }}
-                />
-            </Box>
-        );
+        return <PdfViewer url={url} />;
     }
 
     return (
@@ -188,17 +163,19 @@ function CertCard({ cert }: { cert: CertData }) {
             sx={{ borderRadius: 3, overflow: "hidden", position: "relative" }}
         >
             <Chip
-                label="有效"
-                size="small"
+                label={cert.expired ? "已过期" : "有效"}
                 sx={{
                     position: "absolute",
                     top: 12,
                     right: 12,
                     zIndex: 1,
-                    bgcolor: "#e8f5e9",
-                    color: "#2e7d32",
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
+                    bgcolor: cert.expired ? "#fdecea" : "#e8f5e9",
+                    color: cert.expired ? "#c62828" : "#2e7d32",
+                    fontWeight: 700,
+                    fontSize: "1.05rem",
+                    height: 40,
+                    borderRadius: 2,
+                    px: 1,
                 }}
             />
 
@@ -223,7 +200,7 @@ function CertCard({ cert }: { cert: CertData }) {
                         ["证书编号", cert.certNum],
                         ["证书类型", certTypeName],
                         ["颁发机构", cert.issuingAgency],
-                        ["有效期至", formatDate(cert.expDate)],
+                        ["有效期至", formatChineseDateLong(cert.expDate)],
                     ].map(([label, value]) => (
                         <TableRow key={label}>
                             <TableCell

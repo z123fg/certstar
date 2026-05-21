@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import { certTypeMap, toChineseDateString } from "@certstar/shared";
+import { certTypeMap, toChineseDate } from "@certstar/shared";
 import logger from "../logger";
 import prisma from "../lib/prisma";
 
 const isTodayOrLater = (expDate: Date): boolean => {
     const todayCN = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" });
-    return toChineseDateString(expDate) >= todayCN;
+    return toChineseDate(expDate) >= todayCN;
 };
 
 export const searchByIdNum = async (req: Request, res: Response) => {
@@ -16,14 +16,13 @@ export const searchByIdNum = async (req: Request, res: Response) => {
     }
     try {
         const certs = await prisma.cert.findMany({ where: { idNum } });
-        const results = certs
-            .filter((c) => isTodayOrLater(c.expDate))
-            .map((c) => ({
-                slug: `${c.idNum.slice(-4)}-${c.certNum}`,
-                name: c.name,
-                certType: certTypeMap[c.certType as keyof typeof certTypeMap] ?? c.certType,
-                certNum: c.certNum,
-            }));
+        const results = certs.map((c) => ({
+            slug: `${c.idNum.slice(-4)}-${c.certNum}`,
+            name: c.name,
+            certType: certTypeMap[c.certType as keyof typeof certTypeMap] ?? c.certType,
+            certNum: c.certNum,
+            expired: !isTodayOrLater(c.expDate),
+        }));
         res.json({ results });
     } catch (err) {
         logger.error(err, "Failed to search certs by idNum");
@@ -51,12 +50,8 @@ export const getByCertSlug = async (req: Request, res: Response) => {
             res.status(404).json({ message: "Certificate not found" });
             return;
         }
-        if (!isTodayOrLater(cert.expDate)) {
-            res.status(410).json({ message: "Certificate has expired" });
-            return;
-        }
-
-        res.json({ result: cert });
+        const expired = !isTodayOrLater(cert.expDate);
+        res.json({ result: { ...cert, expired } });
     } catch (err) {
         logger.error(err, "Failed to fetch cert for inquiry");
         res.status(500).json({ message: "Failed to fetch certificate" });

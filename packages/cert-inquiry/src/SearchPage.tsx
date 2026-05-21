@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
@@ -15,6 +16,7 @@ interface SearchResult {
     name: string;
     certType: string;
     certNum: string;
+    expired?: boolean;
 }
 
 import { API_URL } from "./config";
@@ -137,13 +139,30 @@ export default function SearchPage() {
                             return (
                                 <li key={key} {...rest}>
                                     <ListItemText
-                                        primary={option.name}
+                                        primary={
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <span>{option.name}</span>
+                                                {option.expired && (
+                                                    <Chip
+                                                        label="已过期"
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: "#fdecea",
+                                                            color: "#c62828",
+                                                            fontWeight: 600,
+                                                            fontSize: "0.7rem",
+                                                            height: 20,
+                                                        }}
+                                                    />
+                                                )}
+                                            </Box>
+                                        }
                                         secondary={`${option.certType} · ${option.certNum}`}
                                         slotProps={{
                                             primary: {
                                                 sx: {
                                                     fontWeight: 600,
-                                                    color: "primary.main",
+                                                    color: option.expired ? "text.secondary" : "primary.main",
                                                     fontSize: "0.95rem",
                                                 },
                                             },

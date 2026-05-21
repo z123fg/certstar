@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { certTypeMap, toChineseDateString } from "@certstar/shared";
+import { certTypeMap, toChineseDate } from "@certstar/shared";
 import type { Cert } from "../../../types";
 import intl from "../../../intl/intl";
 
@@ -97,31 +97,31 @@ export function useCertFilter(certs: Cert[]) {
                 .filter(
                     (c) =>
                         !filters.expDateFrom ||
-                        toChineseDateString(c.expDate) >= filters.expDateFrom,
+                        toChineseDate(c.expDate) >= filters.expDateFrom,
                 )
                 .filter(
                     (c) =>
-                        !filters.expDateTo || toChineseDateString(c.expDate) <= filters.expDateTo,
+                        !filters.expDateTo || toChineseDate(c.expDate) <= filters.expDateTo,
                 )
                 .filter(
                     (c) =>
                         !filters.createdAtFrom ||
-                        toChineseDateString(c.createdAt) >= filters.createdAtFrom,
+                        toChineseDate(c.createdAt) >= filters.createdAtFrom,
                 )
                 .filter(
                     (c) =>
                         !filters.createdAtTo ||
-                        toChineseDateString(c.createdAt) <= filters.createdAtTo,
+                        toChineseDate(c.createdAt) <= filters.createdAtTo,
                 )
                 .filter(
                     (c) =>
                         !filters.updatedAtFrom ||
-                        toChineseDateString(c.updatedAt) >= filters.updatedAtFrom,
+                        toChineseDate(c.updatedAt) >= filters.updatedAtFrom,
                 )
                 .filter(
                     (c) =>
                         !filters.updatedAtTo ||
-                        toChineseDateString(c.updatedAt) <= filters.updatedAtTo,
+                        toChineseDate(c.updatedAt) <= filters.updatedAtTo,
                 )
                 .sort((a, b) => {
                     const av = String(a[sortKey] ?? "");

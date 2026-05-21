@@ -3,7 +3,7 @@ import {
   Box, Button, FormControl, InputLabel, MenuItem,
   Select, Stack, TextField, Typography,
 } from "@mui/material";
-import { certTypeMap, parseExpDate, toChineseDateString } from "@certstar/shared";
+import { certTypeMap, parseExpDate } from "@certstar/shared";
 import type { Cert } from "../../types";
 import intl from "../../intl/intl";
 
@@ -79,7 +79,7 @@ export default function CertForm({ data, profileImageDataUrl, onChange, onProfil
             label={intl[key as keyof typeof intl]}
             required={required}
             disabled={isDisabled}
-            value={key === "expDate" ? toChineseDateString(data[key]) : String(data[key] ?? "")}
+            value={String(data[key] ?? "")}
             error={Boolean(error)}
             helperText={error ?? (key === "expDate" ? intl.expDateHint : undefined)}
             onChange={(e) => handleChange(key, e.target.value)}

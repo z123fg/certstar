@@ -4,15 +4,12 @@ import { useAppContext } from "../App";
 import { deleteMany } from "../services/cert";
 import intl from "../intl/intl";
 
-
 export default function CertListPage() {
-    const {
-        certs,
-        refreshCerts,
-        setAlert,
-        showBackdrop,
-    } = useAppContext();
-
+    const { certs, refreshCerts, setAlert, showBackdrop } = useAppContext();
+    console.log(
+        "certs list",
+        certs.find((item) => item.certNum === "MSA-A-Ⅱ-2025038")?.expDate,
+    );
     const handleBatchDelete = async (ids: string[]) => {
         showBackdrop(true);
         try {
@@ -30,7 +27,15 @@ export default function CertListPage() {
     };
 
     return (
-        <Box sx={{ p: 3, height: "calc(100vh - 64px)", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+        <Box
+            sx={{
+                p: 3,
+                height: "calc(100vh - 64px)",
+                display: "flex",
+                flexDirection: "column",
+                boxSizing: "border-box",
+            }}
+        >
             <CertTable certs={certs} onBatchDelete={handleBatchDelete} />
         </Box>
     );

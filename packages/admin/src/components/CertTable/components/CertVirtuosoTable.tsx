@@ -17,11 +17,7 @@ import {
     type VirtuosoHandle,
     type StateSnapshot,
 } from "react-virtuoso";
-import {
-    certTypeMap,
-    toChineseDateString,
-    toChineseDatetimeString,
-} from "@certstar/shared";
+import { certTypeMap, toChineseDate, toChineseDatetime } from "@certstar/shared";
 import type { Cert } from "../../../types";
 import type { SortDir } from "../hooks/useCertFilter";
 import intl from "../../../intl/intl";
@@ -43,7 +39,7 @@ const COLUMNS_AFTER_ACTION: Column[] = [
 ];
 
 const formatDate = (value: unknown, type: "date" | "datetime"): string =>
-    type === "date" ? toChineseDateString(value) : toChineseDatetimeString(value);
+    type === "date" ? toChineseDate(value) : toChineseDatetime(value);
 
 // ── Stable Virtuoso sub-components ──────────────────────────────────────────
 // Defined outside the render function so their identity never changes between
