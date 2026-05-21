@@ -16,6 +16,10 @@ export default function PdfViewer({ url }: { url: string }) {
 
     useEffect(() => {
         let cancelled = false;
+        setLoading(true);
+        setError(false);
+        setDisplaySize(null);
+
         (async () => {
             try {
                 const pdf = await pdfjsLib.getDocument(url).promise;
@@ -53,8 +57,7 @@ export default function PdfViewer({ url }: { url: string }) {
 
                 await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
                 if (!cancelled) setLoading(false);
-            } catch (err) {
-                console.error("[PdfViewer] render failed:", err);
+            } catch {
                 if (!cancelled) {
                     setError(true);
                     setLoading(false);

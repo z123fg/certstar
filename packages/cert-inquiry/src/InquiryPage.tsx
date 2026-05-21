@@ -118,12 +118,47 @@ export default function InquiryPage() {
     );
 }
 
-function CertImage({ url }: { url: string }) {
+function ExpiredWatermark() {
+    return (
+        <Box
+            sx={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 1,
+                pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+        >
+            <Typography
+                sx={{
+                    fontSize: "clamp(2rem, 12vw, 5rem)",
+                    fontWeight: 900,
+                    color: "rgba(180, 0, 0, 0.25)",
+                    transform: "rotate(-30deg)",
+                    userSelect: "none",
+                    whiteSpace: "nowrap",
+                    letterSpacing: "0.1em",
+                }}
+            >
+                已过期
+            </Typography>
+        </Box>
+    );
+}
+
+function CertImage({ url, expired }: { url: string; expired?: boolean }) {
     const isPdf = new URL(url).pathname.toLowerCase().endsWith(".pdf");
     const [imageLoaded, setImageLoaded] = useState(false);
 
     if (isPdf) {
-        return <PdfViewer url={url} />;
+        return (
+            <Box sx={{ position: "relative" }}>
+                <PdfViewer url={url} />
+                {expired && <ExpiredWatermark />}
+            </Box>
+        );
     }
 
     return (
@@ -149,6 +184,7 @@ function CertImage({ url }: { url: string }) {
                 }}
                 onLoad={() => setImageLoaded(true)}
             />
+            {expired && <ExpiredWatermark />}
         </Box>
     );
 }
@@ -179,7 +215,7 @@ function CertCard({ cert }: { cert: CertData }) {
                 }}
             />
 
-            {cert.certImageUrl && <CertImage url={cert.certImageUrl} />}
+            {cert.certImageUrl && <CertImage url={cert.certImageUrl} expired={cert.expired} />}
 
             <Table
                 size="small"

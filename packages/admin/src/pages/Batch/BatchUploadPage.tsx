@@ -7,7 +7,6 @@ import { parseCertCsv } from "../../utils/csvUtils";
 import { useBatchContext } from "./BatchContext";
 import intl from "../../intl/intl";
 
-
 export default function BatchUploadPage() {
     const navigate = useNavigate();
     const {
@@ -129,7 +128,7 @@ export default function BatchUploadPage() {
                             >
                                 {imageMap.size > 0
                                     ? `已选 ${imageMap.size} 张`
-                                    : "选择照片"}
+                                    : "选择证件照片"}
                             </Button>
                         </label>
                     </Box>
