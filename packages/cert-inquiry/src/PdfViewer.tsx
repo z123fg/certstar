@@ -10,15 +10,21 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 export default function PdfViewer({ url }: { url: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [currentUrl, setCurrentUrl] = useState(url);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [displaySize, setDisplaySize] = useState<{ width: number; height: number } | null>(null);
 
-    useEffect(() => {
-        let cancelled = false;
+    // Reset state synchronously during render when URL changes (derived state pattern).
+    if (currentUrl !== url) {
+        setCurrentUrl(url);
         setLoading(true);
         setError(false);
         setDisplaySize(null);
+    }
+
+    useEffect(() => {
+        let cancelled = false;
 
         (async () => {
             try {
