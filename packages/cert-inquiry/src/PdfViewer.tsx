@@ -51,7 +51,7 @@ export default function PdfViewer({ url }: { url: string }) {
                 canvas.style.width = `${displayWidth}px`;
                 canvas.style.height = `${displayHeight}px`;
 
-                await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+                await page.render({ canvas, viewport }).promise;
                 if (!cancelled) setLoading(false);
             } catch {
                 if (!cancelled) {
