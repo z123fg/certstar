@@ -4,7 +4,8 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// Run in main thread — no worker needed for single-page cert display
+pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 export default function PdfViewer({ url }: { url: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
