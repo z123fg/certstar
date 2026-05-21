@@ -25,7 +25,7 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "papaparse": "^5.5.3",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^2.16.105",
     "qrcode": "^1.5.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

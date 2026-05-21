@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 
-// Worker is copied to public/pdf.worker.js by the Vite plugin (always served
-// as application/javascript regardless of server .mjs MIME configuration).
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export default function PdfViewer({ url }: { url: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,7 +51,7 @@ export default function PdfViewer({ url }: { url: string }) {
                 canvas.style.width = `${displayWidth}px`;
                 canvas.style.height = `${displayHeight}px`;
 
-                await page.render({ canvas, viewport }).promise;
+                await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
                 if (!cancelled) setLoading(false);
             } catch (err) {
                 console.error("[PdfViewer] render failed:", err);
