@@ -49,10 +49,9 @@ export default function PdfViewer({ url }: { url: string }) {
                 const displayWidth = Math.round(fitScale * baseViewport.width);
                 const displayHeight = Math.round(fitScale * baseViewport.height);
 
-                // Render at higher resolution than display size to preserve embedded image quality.
-                // 4× the base scale captures detail close to a 300dpi embedded image.
-                const renderScale = Math.max(fitScale, 4) * dpr;
-                const viewport = page.getViewport({ scale: renderScale });
+                // Render at exactly the display resolution × DPR — sharp on screen,
+                // no excess pixels, no canvas size issues on any platform.
+                const viewport = page.getViewport({ scale: fitScale * dpr });
 
                 setDisplaySize({ width: displayWidth, height: displayHeight });
 

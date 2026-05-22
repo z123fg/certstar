@@ -6,10 +6,6 @@ import intl from "../intl/intl";
 
 export default function CertListPage() {
     const { certs, refreshCerts, setAlert, showBackdrop } = useAppContext();
-    console.log(
-        "certs list",
-        certs.find((item) => item.certNum === "MSA-A-Ⅱ-2025038")?.expDate,
-    );
     const handleBatchDelete = async (ids: string[]) => {
         showBackdrop(true);
         try {
