@@ -23,6 +23,17 @@ for f in \
 done
 echo "    OK"
 
+# ── Check SSL certs exist (nginx.conf won't load without them) ────────────────
+echo "==> Checking SSL certificates..."
+for f in $(grep -o '/etc/letsencrypt/live/[^;]*' "$REPO_DIR/deploy/nginx.conf" | sort -u); do
+    if [ ! -f "$f" ]; then
+        echo "ERROR: Missing $f"
+        echo "       Run once first: sudo bash $REPO_DIR/deploy/setup-ssl.sh"
+        exit 1
+    fi
+done
+echo "    OK"
+
 # ── Pull latest code ──────────────────────────────────────────────────────────
 echo "==> Pulling latest code..."
 cd "$REPO_DIR"
